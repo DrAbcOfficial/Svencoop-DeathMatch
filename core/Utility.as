@@ -1,5 +1,15 @@
 namespace pvpUtility
 {
+    //取对数
+    float getLog(float&in natural, float &in base = 10)
+    {
+        return log(natural)/log(base);
+    }
+    //获取SteamId
+    string getSteamId( CBasePlayer@ pPlayer )
+	{
+		return g_EngineFuncs.GetPlayerAuthId(pPlayer.edict());
+	}
     //%Y 年
     //%m 月
     //%d 日

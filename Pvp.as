@@ -5,6 +5,8 @@
 #include "core/Utility"
 #include "core/Config"
 #include "core/Addon"
+#include "core/Hitbox"
+#include "core/Hook"
 
 bool LoadFlag = false;
 void PluginInit()
@@ -22,7 +24,9 @@ void PluginInit()
     }
     
     pvpLang::PluginInit();
+    pvpHook::PluginInit();
     pvpTimer::PluginInit();
+    pvpHitbox::PluginInit();
 
     //全部载入完毕啦！赶紧打印个消息爽爽！
     pvpLog::log("""
@@ -39,7 +43,10 @@ void PluginInit()
 
 void MapInit()
 {
+    if(!LoadFlag)
+        return;
     //注册自定义monster
+    pvpHitbox::MapInit();
 }
 
 void MapActivited()

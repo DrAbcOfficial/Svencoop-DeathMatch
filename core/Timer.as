@@ -33,8 +33,6 @@ namespace pvpTimer
         pvpLang::addLang("_TIMER_","Timer");
         //初始化计时器
         @pTimer = g_Scheduler.SetInterval( "doFuncTimer", timeStep, g_Scheduler.REPEAT_INFINITE_TIMES );
-        //给个消息
-        pvpLog::moduleLog("Timer","Dr.Abc");
     }
 
     void doFuncTimer()
