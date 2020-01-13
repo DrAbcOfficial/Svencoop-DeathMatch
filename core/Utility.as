@@ -24,6 +24,28 @@ namespace pvpUtility
         return szCurrentTime;
     }
 
+    /**
+        输出格式应该是
+        {
+            "key": "val",
+            "key": "val",
+            "key": "val"
+        }
+    **/
+    string dictionaryToStr(dictionary&in dic)
+    {
+        string tempStr = "{";
+        array<string>@ arKeys = dic.getKeys();   
+        for(uint i = 0; i < arKeys.length(); i++)
+        {
+            tempStr += "\"" + arKeys[i] + "\": \"" + string(dic[arKeys[i]]) + "\"";
+            if( i != arKeys.length() - 1)
+                tempStr += ",";
+        }
+        tempStr += "}";
+        return tempStr;
+    }
+
     //字符串数组是否存在元素
     int isExists(array<string>&in arr, string&in key)
     {

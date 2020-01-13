@@ -76,7 +76,7 @@ class trigger_hitbox : ScriptBaseMonsterEntity
             @pev.aiment		= @pev.owner;
             pev.solid		= SOLID_SLIDEBOX;
             pev.flags |= FL_MONSTER;
-            pev.takedamage	= DAMAGE_YES;
+            pev.takedamage	= DAMAGE_AIM;
             m_pPlayer.pev.solid = SOLID_NOT;
             pev.colormap	= pev.owner.vars.colormap;
             self.m_bloodColor	= BLOOD_COLOR_RED;
@@ -90,18 +90,18 @@ class trigger_hitbox : ScriptBaseMonsterEntity
     }
 
     //他杀
-    string doKillFeed(CBaseEntity@ pAttacker , CBaseEntity@ pInflictor )
+    string doKillFeed(CBaseEntity@ pAttacker , CBaseEntity@ pInflictor ,int&in index)
     {
         CBasePlayer@ pPlayer = cast<CBasePlayer@>(pAttacker);
         string Inflicetor = pInflictor.GetClassname();
         if( Inflicetor == "player" )
             Inflicetor = string(pPlayer.m_hActiveItem.GetEntity().pev.classname);
         pAttacker.pev.frags++;
-        return string(pvpLang::getLangStr("_HITBOX_",Inflicetor)) == "" ? Inflicetor : string(pvpLang::getLangStr("_HITBOX_",Inflicetor));
+        return string(pvpLang::getLangStr("_HITBOX_",Inflicetor)) == "" ? Inflicetor : string(pvpLang::getLangStr("_HITBOX_",Inflicetor, index));
     }
     
     //自杀
-    string doSuicide(int bitsDamageType)
+    string doSuicide(int bitsDamageType, int&in index)
     {
         string suicidereason = "";
         int8 deathtype = 0;
@@ -109,25 +109,25 @@ class trigger_hitbox : ScriptBaseMonsterEntity
              deathtype = Math.RandomLong(4,5);
         else
             deathtype = Math.RandomLong(0,3);
-        suicidereason = pvpLang::getLangStr("_HITBOX_","DSUI" + deathtype).Replace("%1", string(m_pPlayer.pev.netname));
+        suicidereason = pvpLang::getLangStr("_HITBOX_","DSUI" + deathtype, string(m_pPlayer.pev.netname), index);
         --m_pPlayer.pev.frags;
         return suicidereason;
     }
     //怪物杀
-    string doMonsterKill(CBaseEntity@ pInflictor )
+    string doMonsterKill(CBaseEntity@ pInflictor ,int&in index)
     {
         CBaseMonster@ pMonster = cast<CBaseMonster@>(pInflictor);
         string szOwnername = "";
         if(pMonster.pev.owner !is null)
-            szOwnername = pvpLang::getLangStr("_HITBOX_","DMN0").Replace("%1", string(pMonster.pev.owner.vars.netname));
-        return szOwnername + pvpLang::getLangStr("_HITBOX_","DMN" + Math.RandomLong(1,2)).Replace("%1", string(pMonster.m_FormattedName)).Replace("%2", string(m_pPlayer.pev.netname));
+            szOwnername = pvpLang::getLangStr("_HITBOX_","DMN0", string(pMonster.pev.owner.vars.netname), index);
+        return szOwnername + pvpLang::getLangStr("_HITBOX_","DMN" + Math.RandomLong(1,2), string(pMonster.m_FormattedName), string(m_pPlayer.pev.netname), index);
     }
     //意外杀
-    string doAccident( int bitsDamageType )
+    string doAccident( int bitsDamageType ,int&in pIndex)
     {
         int index = int(pvpUtility::getLog(bitsDamageType,2));
-        string szReturn = pvpLang::getLangStr("_HITBOX_","DAC" + index + Math.RandomLong(0,1)).Replace("%1", string(m_pPlayer.pev.netname));
-        return szReturn.IsEmpty() ? pvpLang::getLangStr("_HITBOX_","DACA" + Math.RandomLong(0,1)).Replace("%1", string(m_pPlayer.pev.netname)) : szReturn;
+        string szReturn = pvpLang::getLangStr("_HITBOX_","DAC" + index + Math.RandomLong(0,1), string(m_pPlayer.pev.netname), pIndex);
+        return szReturn.IsEmpty() ? pvpLang::getLangStr("_HITBOX_","DACA" + Math.RandomLong(0,1), string(m_pPlayer.pev.netname), pIndex) : szReturn;
     }
     //大概是真的死了
     void doDeath( float&in flTake )
@@ -160,24 +160,33 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         if (m_pPlayer.pev.health <= 0)
         {
             string szPrintf = "";
-            if(pAttacker !is null && pAttacker.IsPlayer() && pAttacker.IsNetClient())
-            {
-                if(g_Engine.time - m_pPlayer.m_fDeadTime > pvpHitbox::m_flRespwantime)
+            for ( int i = 1; i <= g_Engine.maxClients; ++i )
+		    {
+                CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex( i );
+                if ( pPlayer !is null && pPlayer.IsConnected() )
                 {
-                    if( pAttacker !is m_pPlayer )	
-                        szPrintf = string(pAttacker.pev.netname) + " :: ["  + doKillFeed(pAttacker, pInflictor) + "] :: " + string(m_pPlayer.pev.netname) + "\n";
+                    int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
+                    
+                    if(pAttacker !is null && pAttacker.IsPlayer() && pAttacker.IsNetClient())
+                    {
+                        if(g_Engine.time - m_pPlayer.m_fDeadTime > pvpHitbox::m_flRespwantime)
+                        {
+                            if( pAttacker !is m_pPlayer )	
+                                szPrintf = string(pAttacker.pev.netname) + " :: ["  + doKillFeed(pAttacker, pInflictor, pIndex) + "] :: " + string(m_pPlayer.pev.netname) + "\n";
+                            else
+                                szPrintf = doSuicide(bitsDamageType, pIndex);
+                        }
+                    }
+                    else if(pAttacker !is null && pAttacker.IsMonster())
+                        szPrintf = doMonsterKill(pInflictor, pIndex);
                     else
-                        szPrintf = doSuicide(bitsDamageType);
-                }
-            }
-            else if(pAttacker !is null && pAttacker.IsMonster())
-                szPrintf = doMonsterKill(pInflictor);
-            else
-                szPrintf = doAccident(bitsDamageType);
+                        szPrintf = doAccident(bitsDamageType, pIndex);
+                    //左上角来点输出
+                    g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTNOTIFY, szPrintf);	
+	            }
+		    }
             //大概是真的死了
             doDeath(Take);
-            //左上角来点输出
-            g_PlayerFuncs.ClientPrintAll(HUD_PRINTNOTIFY, szPrintf);
             //此时返回1
             return 1;
         }

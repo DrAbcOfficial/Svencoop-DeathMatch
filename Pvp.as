@@ -7,6 +7,8 @@
 #include "core/Addon"
 #include "core/Hitbox"
 #include "core/Hook"
+#include "core/PlayerData"
+#include "core/ClientCmd"
 
 bool LoadFlag = false;
 void PluginInit()
@@ -26,6 +28,8 @@ void PluginInit()
     pvpLang::PluginInit();
     pvpHook::PluginInit();
     pvpTimer::PluginInit();
+    pvpPlayerData::PluginInit();
+    pvpClientCmd::PluginInit();
     pvpHitbox::PluginInit();
 
     //全部载入完毕啦！赶紧打印个消息爽爽！

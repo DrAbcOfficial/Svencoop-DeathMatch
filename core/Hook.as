@@ -4,6 +4,7 @@ namespace pvpHook
     {
         g_Hooks.RegisterHook(Hooks::Player::PlayerTakeDamage, @PlayerTakeDamage);
 		g_Hooks.RegisterHook(Hooks::Player::PlayerSpawn, @PlayerSpawn);
+        g_Hooks.RegisterHook(Hooks::Player::ClientPutInServer, @ClientPutInServer);
     }
 
     HookReturnCode PlayerSpawn(CBasePlayer@ pPlayer)
@@ -27,5 +28,12 @@ namespace pvpHook
         }
         info.flDamage = 0;
         return HOOK_CONTINUE;
+    }
+
+    HookReturnCode ClientPutInServer(CBasePlayer@ pPlayer)
+    {
+        pvpPlayerData::PlayerPutinServer(pPlayer);
+        pvpLang::PlayerPutinServer(pPlayer);
+        return HOOK_HANDLED;
     }
 }
