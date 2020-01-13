@@ -1,12 +1,3 @@
-enum typeOfDictionary
-{
-    PDATA_INT=0,
-    PDATA_UINT,
-    PDATA_FLOAT,
-    PDATA_BOOL,
-    PDATA_STRING
-}
-
 namespace pvpPlayerData
 {
     void PluginInit()

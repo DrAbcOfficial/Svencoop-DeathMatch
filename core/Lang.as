@@ -4,15 +4,15 @@ namespace pvpLang
     {
         pvpLang::addLang("_MAIN_","Main");
 
-        pvpLang::sysLang = pvpConfig::getConfig("Lang","SysLang");
+        pvpLang::sysLang = pvpConfig::getConfig("Lang","SysLang").getString();
         pvpLang::sysIndex = pvpLang::getLangIndex(sysLang);
 
         pvpLog::log(pvpLang::getLangStr("_MAIN_", "SYSLANG", sysLang));
 
         //改变自己的语言
-        pvpClientCmd::RegistCommand("pvp_language","Change or get your language here","Language",@pvpLang::ChangeLangCallback);
+        pvpClientCmd::RegistCommand("player_language","Change or get your language here","Language",@pvpLang::ChangeLangCallback);
         //查看系统语言和可选语言
-        pvpClientCmd::RegistCommand("pvp_syslang","Tell me the system language","Language",@pvpLang::SysLangCallback);
+        pvpClientCmd::RegistCommand("info_syslang","Tell me the system language","Language",@pvpLang::SysLangCallback);
     }
 
     void SysLangCallback(const CCommand@ pArgs)
@@ -133,6 +133,7 @@ namespace pvpLang
         }
     }
 
+    //由玩家获取语言序号
     int getPlayerLangIndex(CBasePlayer@&in pPlayer)
     {
         return atoi(pvpPlayerData::getData(pPlayer, "Lang"));
@@ -161,7 +162,7 @@ namespace pvpLang
         int iBuffer = pvpUtility::isExists(ayLangs, name);
         if(iBuffer == -1)
         {
-            pvpLog::log("Can not get the language info!", 2);
+            pvpLog::log("Can not get the language info!", SYSWARN);
             return "";
         }
 
@@ -177,17 +178,17 @@ namespace pvpLang
         //是不是空的
         if(tempDic is null)
         {
-            pvpLog::log("Null language info!Name: " + name + " Key: " + key + " Lang: " + lang, 2);
+            pvpLog::log("Null language info!Name: " + name + " Key: " + key + " Lang: " + lang, SYSERROR);
             return tempStr;
         }
         if(tempDic.exists(key))
         {
             //如果存在该键值则赋值
-            tempStr = string(tempDic[key]);
+            tempStr = cast<pvpFile::CINIValue@>(tempDic[key]).getString();
         }
         else
         {
-            pvpLog::log("Can not found language info!Name: " + name + " Key: " + key+ " Lang: " + lang, 2);
+            pvpLog::log("Can not found language info!Name: " + name + " Key: " + key+ " Lang: " + lang, SYSERROR);
         }
         return tempStr;
     }

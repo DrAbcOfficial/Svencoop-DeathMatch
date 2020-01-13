@@ -9,6 +9,7 @@
 #include "core/Hook"
 #include "core/PlayerData"
 #include "core/ClientCmd"
+#include "core/ClientSay"
 
 bool LoadFlag = false;
 void PluginInit()
@@ -30,6 +31,7 @@ void PluginInit()
     pvpTimer::PluginInit();
     pvpPlayerData::PluginInit();
     pvpClientCmd::PluginInit();
+    pvpClientSay::PluginInit();
     pvpHitbox::PluginInit();
 
     //全部载入完毕啦！赶紧打印个消息爽爽！

@@ -21,10 +21,20 @@ namespace pvpHitbox
 
     void playerSpawn( CBasePlayer@ pPlayer )
 	{
+        pPlayer.pev.solid = SOLID_NOT;
 		CBaseEntity@ pEntity = g_EntityFuncs.Create( "trigger_hitbox", pPlayer.pev.origin, pPlayer.pev.angles, true, pPlayer.edict());
         pEntity.pev.targetname = pvpUtility::getSteamId(pPlayer);
         g_EntityFuncs.DispatchSpawn( pEntity.edict() );
 	}
+
+    void playerKilled(CBasePlayer@ pPlayer)
+    {
+        CBaseEntity@ pEntity = null;
+        while((@pEntity = g_EntityFuncs.FindEntityByTargetname(pEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)))) !is null)
+        {
+            g_EntityFuncs.Remove(pEntity);
+        }
+    }
 
     //复活时间
     const float m_flRespwantime = g_EngineFuncs.CVarGetFloat("mp_respawndelay");
@@ -76,14 +86,14 @@ class trigger_hitbox : ScriptBaseMonsterEntity
             @pev.aiment		= @pev.owner;
             pev.solid		= SOLID_SLIDEBOX;
             pev.flags |= FL_MONSTER;
-            pev.takedamage	= DAMAGE_AIM;
+            pev.takedamage	= DAMAGE_AIM | DAMAGE_YES;
             m_pPlayer.pev.solid = SOLID_NOT;
             pev.colormap	= pev.owner.vars.colormap;
             self.m_bloodColor	= BLOOD_COLOR_RED;
             self.m_FormattedName = m_pPlayer.pev.netname;
 
-            m_vecMins = pev.owner.vars.mins;
-            m_vecMaxs = pev.owner.vars.maxs;
+            m_vecMins = pev.owner.vars.mins.opAssign(Vector(0.2, 0.2, 0.2));
+            m_vecMaxs = pev.owner.vars.maxs.opAssign(Vector(0.2, 0.2, 0.2));
             g_EntityFuncs.SetSize( pev, m_vecMins, m_vecMaxs );
         }
         //self.MonsterInit();
@@ -182,7 +192,7 @@ class trigger_hitbox : ScriptBaseMonsterEntity
                     else
                         szPrintf = doAccident(bitsDamageType, pIndex);
                     //左上角来点输出
-                    g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTNOTIFY, szPrintf);	
+                    g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTNOTIFY, szPrintf + "\n");	
 	            }
 		    }
             //大概是真的死了
@@ -229,10 +239,8 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         if (pPlayerAp != 0 && !(bitsDamageType & (DMG_FALL | DMG_DROWN) != 0) )
 	    {
             //从配置中获取减伤率和加成量
-            float flARRatio = 0;
-            flARRatio = atof(pvpConfig::getConfig("Hitbox","ARRatio"));
-            float flARBonus = 0;
-            flARBonus = atof(pvpConfig::getConfig("Hitbox","ARBonus"));
+            float flARRatio = pvpConfig::getConfig("Hitbox","ARRatio").getFloat();
+            float flARBonus = pvpConfig::getConfig("Hitbox","ARBonus").getFloat();
             //计算护甲减伤，算出扣甲量
             float flDamageNew = flDamage * flARRatio;
             float flArmor = (flDamage - flDamageNew) * flARBonus;

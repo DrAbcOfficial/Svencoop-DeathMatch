@@ -1,6 +1,6 @@
 enum ClientCmdFlag
 {
-    CCMD_YES = 0,
+    CCMD_NONE = 0,
     CCMD_ADMIN,
     CCMD_OWNER,
     CCMD_SERVER
@@ -11,13 +11,13 @@ namespace pvpClientCmd
     void PluginInit()
     {
         pvpLang::addLang("_CLIENTCMD_","ClientCmd");
+        pvpClientCmd::RegistCommand("pvp_help","List avaliable keys","ClientCommand", @pvpClientCmd::ListCallback);
         @pvpClientCmd::aryCmdKeys = pvpClientCmd::dicCmdList.getKeys();
     }
 
 	dictionary dicCmdList;
 	array<string> @aryCmdKeys;
     funcdef void ClientCmdCallback( const CCommand@ );
-	CClientCommand g_Onekeylist("pvp_help", "List all key", @ListCallback);
 
 	void ListCallback(const CCommand@ Argments)
 	{
@@ -96,7 +96,7 @@ namespace pvpClientCmd
 		}
 	}
 
-	void RegistCommand( string szName, string szHelpInfo, string szPrintf, ClientCmdCallback@ pCallback, int iFlags = 0 )
+	void RegistCommand( string szName, string szHelpInfo, string szPrintf, ClientCmdCallback@ pCallback, int iFlags = CCMD_NONE )
 	{
 		CClientCmd command;
 		command.Name = szName;

@@ -46,6 +46,15 @@ namespace pvpUtility
         return tempStr;
     }
 
+    bool strTobool(string&in str)
+    {
+        bool bTemp = false;
+        str = tolower(str);
+        if(str == "true" || str == "1")
+            bTemp = true;
+        return bTemp;
+    }
+
     //字符串数组是否存在元素
     int isExists(array<string>&in arr, string&in key)
     {

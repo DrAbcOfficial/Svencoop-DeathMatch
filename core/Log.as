@@ -86,7 +86,7 @@ namespace pvpLog
 
     void PrintToPlayer(CBasePlayer@pPlayer, string&in szString, int&in iPosition = POSCONSOLE)
     {
-        string szBuffer = "[" + pvpConfig::getConfig("General","Title") + "]" + szString + "\n";
+        string szBuffer = "[" + pvpConfig::getConfig("General","Title").getString() + "]" + szString + "\n";
         switch(iPosition)
         {
             //在控制台推送

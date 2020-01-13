@@ -1,5 +1,100 @@
+enum typeOfDictionary
+{
+    PDATA_NULL,
+    PDATA_INT=0,
+    PDATA_UINT,
+    PDATA_FLOAT,
+    PDATA_BOOL,
+    PDATA_STRING
+}
+
 namespace pvpFile
 {
+    class CINIValue
+    {
+        int8 Type = PDATA_NULL;
+        int iInt;
+        uint uiUint;
+        float flFloat;
+        bool bBool;
+        string szString;
+        CINIValue()
+        {
+
+        }
+        CINIValue(int _Type)
+        {
+            set(_Type);
+        }
+        CINIValue(uint _Type)
+        {
+            set(_Type);
+        }
+        CINIValue(float _Type)
+        {
+            set(_Type);
+        }
+        CINIValue(bool _Type)
+        {
+            set(_Type);
+        }
+        CINIValue(string _Type)
+        {
+            set(_Type);
+        }
+        
+        void set(int _Type)
+        {
+            Type = PDATA_INT;
+            iInt = _Type;
+        }
+        void set(uint _Type)
+        {
+            Type = PDATA_UINT;
+            uiUint = _Type;
+        }
+        void set(float _Type)
+        {
+            Type = PDATA_FLOAT;
+            flFloat = _Type;
+        }
+        void set(bool _Type)
+        {
+            Type = PDATA_BOOL;
+            bBool = _Type;
+        }
+        void set(string _Type)
+        {
+            Type = PDATA_STRING;
+            szString = _Type;
+        }
+
+        int8 getValType()
+        {
+            return Type;
+        }
+        int getInt()
+        {
+            return iInt;
+        }
+        uint getUint()
+        {
+            return uiUint;
+        }
+        float getFloat()
+        {
+            return flFloat;
+        }
+        bool getBool()
+        {
+            return bBool;
+        }
+        string getString()
+        {
+            return szString;
+        }
+    }
+
     dictionary AddDicData(dictionary&in dic, string&in key,string&in sz)
     {
         sz.Trim();
@@ -7,18 +102,18 @@ namespace pvpFile
         Regex::Regex@ fRegex = Regex::Regex("^-?[1-9]\\d*$");
         //布尔型
         if(tolower(sz) == "true")
-            dic.set(key,true);
+            dic.set(key,CINIValue(true));
         else if(tolower(sz) == "false")
-            dic.set(key,false);
+            dic.set(key,CINIValue(false));
         //实数型
         else if(Regex::Match(sz, @pRegex))
-            dic.set(key,atof(sz));
+            dic.set(key,CINIValue(atof(sz)));
         //整数型
         else if(Regex::Match(sz, @fRegex))
-            dic.set(key,atoi(sz));
+            dic.set(key,CINIValue(atoi(sz)));
         //字符串
         else
-            dic.set(key,sz);
+            dic.set(key,CINIValue(sz));
         return dic;
     }
 
