@@ -1,16 +1,12 @@
-/**
-    TO DO
-    1.只有第一个玩家才有伤害，或者会乱掉
-    2.玩家碰撞体积删不掉
-    3.爆炸伤害判定神秘
-    4.或许可以关掉怪物的AI然后用怪物载入？这样就不会内存泄漏了
-**/
-
 namespace pvpHitbox
 {
     void PluginInit()
     {
         pvpLang::addLang("_HITBOX_","Hitbox");
+        strHitbox = pvpConfig::getConfig("Hitbox","Model").getString();
+        bShowHitbox = pvpConfig::getConfig("Hitbox","Show").getBool();
+        //显示hitbox
+        pvpClientCmd::RegistCommand("admin_showhitbox","Show hitbox or not","Hitbox",@pvpHitbox::ChangeShowCall, CCMD_ADMIN);
     }
 
     void MapInit()
@@ -21,7 +17,6 @@ namespace pvpHitbox
 
     void playerSpawn( CBasePlayer@ pPlayer )
 	{
-        pPlayer.pev.solid = SOLID_NOT;
 		CBaseEntity@ pEntity = g_EntityFuncs.Create( "trigger_hitbox", pPlayer.pev.origin, pPlayer.pev.angles, true, pPlayer.edict());
         pEntity.pev.targetname = pvpUtility::getSteamId(pPlayer);
         g_EntityFuncs.DispatchSpawn( pEntity.edict() );
@@ -34,6 +29,12 @@ namespace pvpHitbox
         {
             g_EntityFuncs.Remove(pEntity);
         }
+    }
+
+    void checkPlayerHitbox(CBasePlayer@ pPlayer)
+    {
+        //能触摸，但是不阻挡
+        pPlayer.pev.solid = SOLID_TRIGGER;
     }
 
     //复活时间
@@ -50,12 +51,79 @@ namespace pvpHitbox
 
     array<preDamageCallback@> preCallList = {};
     array<postDamageCallback@> postCallList = {};
+    //模型
+    string strHitbox = "models/player.mdl";
+    bool bShowHitbox = false;
+
+    void doCommand()
+    {
+        pvpConfig::setConfig("Hitbox","Show", bShowHitbox);
+
+        CBaseEntity@ pEntity = null;
+        while((@pEntity = g_EntityFuncs.FindEntityByClassname(pEntity, "trigger_hitbox")) !is null)
+        {
+            if(bShowHitbox == false)
+            {
+                pEntity.pev.rendermode = kRenderTransTexture;
+                pEntity.pev.renderamt = 0;
+            }
+            else
+            {
+                pEntity.pev.rendermode = 0;
+                pEntity.pev.renderamt = 100;
+            }
+        }
+    }
+
+    void ChangeShowCall(const CCommand@ pArgs)
+	{
+        CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
+        int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
+        int tempInt = 0;
+        if(pArgs.ArgC() == 1)
+        {
+            bShowHitbox = !bShowHitbox;
+            doCommand();
+            pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDTLG", pIndex));
+            return;
+        }
+        string tempStr = pArgs[1].ToUppercase();
+        tempStr.Trim();
+        tempInt = Math.clamp(0 ,1, atoi(tempStr));
+        switch(tempInt)
+        {
+            case 0: bShowHitbox = false;pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDOFF", pIndex));break;
+            case 1: bShowHitbox = true; pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pIndex));break;
+        }
+        doCommand();
+	}
 }
 
+enum DEADTYPE
+{
+    DEAD_NONE = -1,
+    DEAD_KILLED,
+    DEAD_SUICIDE,
+    DEAD_MONSTER,
+    DEAD_ACCIDENT
+}
+
+const Vector PLAYER_HULL_MIN = Vector(-16,-16,-36);
+const Vector PLAYER_HULL_MAX = Vector(16,16,20);
+const Vector PLAYER_HEAD_MIN = Vector(-8,-8,20);
+const Vector PLAYER_HEAD_MAX = Vector(8,8,36);
+
+//基类
 class trigger_hitbox : ScriptBaseMonsterEntity
 {
     private Vector m_vecMins,m_vecMaxs;
     private CBasePlayer@ m_pPlayer = null;
+    private bool bDeadFlag = false;
+    private int clClassify = CLASS_HUMAN_MILITARY;
+
+    protected Vector m_vecHullmin;
+    protected Vector m_vecHullmax;
+
     CBaseEntity@ OwnerEnt
     {
         get const	{ return g_EntityFuncs.Instance( pev.owner ); }
@@ -69,34 +137,68 @@ class trigger_hitbox : ScriptBaseMonsterEntity
     void Precache()
     {
         BaseClass.Precache();
-        g_Game.PrecacheModel( self, "models/player.mdl" );
-        g_Game.PrecacheModel( self, "models/playert.mdl" );
+        g_Game.PrecacheModel( self, pvpHitbox::strHitbox );
     }
 
     void Spawn()
     {
         Precache();
         @m_pPlayer = cast<CBasePlayer@>(g_EntityFuncs.Instance(pev.owner));
-        g_EntityFuncs.SetModel( self, "models/player.mdl" );
-        
+        g_EntityFuncs.SetModel( self, pvpHitbox::strHitbox );
+
         if( pev.owner !is null )
         {
+            //无敌
             pev.health = Math.FLOAT_MAX;
+            //跟随玩家
             pev.movetype	= MOVETYPE_FOLLOW;
             @pev.aiment		= @pev.owner;
             pev.solid		= SOLID_SLIDEBOX;
-            pev.flags |= FL_MONSTER;
-            pev.takedamage	= DAMAGE_AIM | DAMAGE_YES;
-            m_pPlayer.pev.solid = SOLID_NOT;
             pev.colormap	= pev.owner.vars.colormap;
+            pev.frags       = m_pPlayer.pev.frags;
             self.m_bloodColor	= BLOOD_COLOR_RED;
             self.m_FormattedName = m_pPlayer.pev.netname;
 
-            m_vecMins = pev.owner.vars.mins.opAssign(Vector(0.2, 0.2, 0.2));
-            m_vecMaxs = pev.owner.vars.maxs.opAssign(Vector(0.2, 0.2, 0.2));
-            g_EntityFuncs.SetSize( pev, m_vecMins, m_vecMaxs );
+            //隐藏
+            if(pvpHitbox::bShowHitbox)
+            {
+                pev.rendermode = 0;
+                pev.renderamt = 100;
+            }
+            else
+            {
+                pev.rendermode = kRenderTransTexture;
+                pev.renderamt = 0;
+            }
+
+            //可受伤害
+            pev.flags |= FL_MONSTER;
+            pev.takedamage	= DAMAGE_AIM | DAMAGE_YES;
+            
+
+            //设置为人类敌人
+            self.SetClassification(clClassify);
+
+            g_EntityFuncs.SetSize( pev, m_pPlayer.pev.mins, m_pPlayer.pev.maxs );
         }
-        //self.MonsterInit();
+    }
+
+    /**
+    void Think()
+    {
+        pvpLog::log(pev);
+        if(m_pPlayer.pev.flags & FL_DUCKING == 0)
+            g_EntityFuncs.SetSize( pev, PLAYER_HULL_MIN, PLAYER_HULL_MAX );
+        else
+            g_EntityFuncs.SetSize( pev, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX );
+        
+        pev.nextthink = g_Engine.time + 1;
+    }
+
+**/
+    int Classify()
+    {
+        return clClassify;
     }
 
     //他杀
@@ -106,7 +208,6 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         string Inflicetor = pInflictor.GetClassname();
         if( Inflicetor == "player" )
             Inflicetor = string(pPlayer.m_hActiveItem.GetEntity().pev.classname);
-        pAttacker.pev.frags++;
         return string(pvpLang::getLangStr("_HITBOX_",Inflicetor)) == "" ? Inflicetor : string(pvpLang::getLangStr("_HITBOX_",Inflicetor, index));
     }
     
@@ -120,7 +221,6 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         else
             deathtype = Math.RandomLong(0,3);
         suicidereason = pvpLang::getLangStr("_HITBOX_","DSUI" + deathtype, string(m_pPlayer.pev.netname), index);
-        --m_pPlayer.pev.frags;
         return suicidereason;
     }
     //怪物杀
@@ -166,35 +266,60 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         //扣血扣甲
         m_pPlayer.pev.armorvalue = Ap;
         m_pPlayer.pev.health = Hp;
+        m_pPlayer.pev.dmg_take += Take;
+
         //如果死亡将玩家传递死亡，并用keyvalue标记为已死
         if (m_pPlayer.pev.health <= 0)
         {
-            string szPrintf = "";
+            bDeadFlag = true;
+            //判断死亡类型
+            int deathFlag = DEAD_NONE;
+            if(pAttacker !is null && pAttacker.IsPlayer() && pAttacker.IsNetClient())
+            {
+                if( pAttacker !is m_pPlayer )	
+                    deathFlag = DEAD_KILLED;
+                else
+                    deathFlag = DEAD_SUICIDE;
+            }
+            else if( pevAttacker !is null && g_EntityFuncs.Instance(pevAttacker).IsMonster())
+                deathFlag = DEAD_MONSTER;
+            else
+                deathFlag = DEAD_ACCIDENT;
+
+            //向玩家输出死亡原因
+            string szPrintf;
             for ( int i = 1; i <= g_Engine.maxClients; ++i )
 		    {
                 CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex( i );
                 if ( pPlayer !is null && pPlayer.IsConnected() )
                 {
                     int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
-                    
-                    if(pAttacker !is null && pAttacker.IsPlayer() && pAttacker.IsNetClient())
+                    switch(deathFlag)
                     {
-                        if(g_Engine.time - m_pPlayer.m_fDeadTime > pvpHitbox::m_flRespwantime)
-                        {
-                            if( pAttacker !is m_pPlayer )	
-                                szPrintf = string(pAttacker.pev.netname) + " :: ["  + doKillFeed(pAttacker, pInflictor, pIndex) + "] :: " + string(m_pPlayer.pev.netname) + "\n";
-                            else
-                                szPrintf = doSuicide(bitsDamageType, pIndex);
-                        }
+                        case DEAD_KILLED:
+                            szPrintf = string(pAttacker.pev.netname) + " :: ["  + doKillFeed(pAttacker, pInflictor, pIndex) + "] :: " + string(m_pPlayer.pev.netname) + "\n";
+                            break;
+                        case DEAD_SUICIDE:
+                            szPrintf = doSuicide(bitsDamageType, pIndex);
+                            break;
+                        case DEAD_MONSTER:
+                            szPrintf = doMonsterKill(pInflictor, pIndex);
+                            break;
+                        case DEAD_ACCIDENT:
+                            szPrintf = doAccident(bitsDamageType, pIndex);
+                            break;
                     }
-                    else if(pAttacker !is null && pAttacker.IsMonster())
-                        szPrintf = doMonsterKill(pInflictor, pIndex);
-                    else
-                        szPrintf = doAccident(bitsDamageType, pIndex);
                     //左上角来点输出
                     g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTNOTIFY, szPrintf + "\n");	
 	            }
 		    }
+            //加减分数情况
+            switch(deathFlag)
+            {
+                case DEAD_KILLED: ++pAttacker.pev.frags;break;
+                case DEAD_SUICIDE: --m_pPlayer.pev.frags;break;
+                default:break;
+            }
             //大概是真的死了
             doDeath(Take);
             //此时返回1
@@ -228,10 +353,15 @@ class trigger_hitbox : ScriptBaseMonsterEntity
 
     int TakeDamage(entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, int bitsDamageType)
     {
-        BaseClass.TakeDamage( pevInflictor,  pevAttacker, flDamage, bitsDamageType);
-        //摔伤不用这个算
-        if(pevAttacker is null)
+         //人都死了
+        if(bDeadFlag)
             return 0;
+        
+        //摔伤不用这个算
+        //才怪
+        //if(pevAttacker is null)
+        //    return 0;
+
         //先修改伤害信息
         //先获取属主血量护甲量
         float pPlayerHp = m_pPlayer.pev.health;
@@ -257,7 +387,7 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         }
 
         float flTake = flDamage;
-        //g_Game.AlertMessage( at_console, "2." + flTake + "\n" );
+
         pPlayerHp -= flTake;
         //然后传递给属主
         if(PreTakeDamage(pevAttacker, flDamage, bitsDamageType))
@@ -268,11 +398,4 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         bitsDamageType = 0;
         return 0;
     }
-
-    //该死的这样会导致内存分配打架
-    //他死，我不能死
-    //void Killed(entvars_t@ pevAttacker, int iGib)
-    //{
-    //    return;
-    //}
 }

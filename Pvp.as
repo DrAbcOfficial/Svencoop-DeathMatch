@@ -4,12 +4,12 @@
 #include "core/File"
 #include "core/Utility"
 #include "core/Config"
-#include "core/Addon"
 #include "core/Hitbox"
 #include "core/Hook"
 #include "core/PlayerData"
 #include "core/ClientCmd"
 #include "core/ClientSay"
+#include "core/Addon"
 
 bool LoadFlag = false;
 void PluginInit()
@@ -31,9 +31,9 @@ void PluginInit()
     pvpTimer::PluginInit();
     pvpPlayerData::PluginInit();
     pvpClientCmd::PluginInit();
-    pvpClientSay::PluginInit();
     pvpHitbox::PluginInit();
 
+    pvpAddon::PluginInit();
     //全部载入完毕啦！赶紧打印个消息爽爽！
     pvpLog::log("""
 
@@ -53,9 +53,12 @@ void MapInit()
         return;
     //注册自定义monster
     pvpHitbox::MapInit();
+    pvpAddon::MapInit();
 }
 
-void MapActivited()
+void MapActivate()
 {
-    
+    if(!LoadFlag)
+        return;
+    pvpAddon::MapActivate();
 }

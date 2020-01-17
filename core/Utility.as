@@ -46,6 +46,7 @@ namespace pvpUtility
         return tempStr;
     }
 
+    //字符串到布尔
     bool strTobool(string&in str)
     {
         bool bTemp = false;
@@ -53,6 +54,11 @@ namespace pvpUtility
         if(str == "true" || str == "1")
             bTemp = true;
         return bTemp;
+    }
+
+    string vecToStr(Vector&in vec)
+    {
+        return string(vec.x) + "," + string(vec.y) + "," + string(vec.z);
     }
 
     //字符串数组是否存在元素

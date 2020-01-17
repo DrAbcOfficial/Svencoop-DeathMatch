@@ -5,7 +5,8 @@ enum typeOfDictionary
     PDATA_UINT,
     PDATA_FLOAT,
     PDATA_BOOL,
-    PDATA_STRING
+    PDATA_STRING,
+    PDATA_VECTOR
 }
 
 namespace pvpFile
@@ -18,6 +19,7 @@ namespace pvpFile
         float flFloat;
         bool bBool;
         string szString;
+        Vector vecVector;
         CINIValue()
         {
 
@@ -39,6 +41,14 @@ namespace pvpFile
             set(_Type);
         }
         CINIValue(string _Type)
+        {
+            set(_Type);
+        }
+        CINIValue(string _Type1, string _Type2, string _Type3)
+        {
+            set(Vector(atof(_Type1), atof(_Type2), atof(_Type3)));
+        }
+        CINIValue(Vector _Type)
         {
             set(_Type);
         }
@@ -68,6 +78,11 @@ namespace pvpFile
             Type = PDATA_STRING;
             szString = _Type;
         }
+        void set(Vector _Type)
+        {
+            Type = PDATA_VECTOR;
+            vecVector = _Type;
+        }
 
         int8 getValType()
         {
@@ -93,27 +108,42 @@ namespace pvpFile
         {
             return szString;
         }
+        Vector getVector()
+        {
+            return vecVector;
+        }
     }
 
     dictionary AddDicData(dictionary&in dic, string&in key,string&in sz)
     {
         sz.Trim();
-        Regex::Regex@ pRegex = Regex::Regex("^\\d*[0-9](|.\\d*[0-9]|,\\d*[0-9])?$");
+        //实数
+        Regex::Regex@ pRegex = Regex::Regex("^(-?\\d+)(\\.\\d+)?$");
+        //整数
         Regex::Regex@ fRegex = Regex::Regex("^-?[1-9]\\d*$");
+        //向量
+        Regex::Regex@ vRegex = Regex::Regex("^(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?$");
         //布尔型
-        if(tolower(sz) == "true")
+        string temp = sz;
+        if(sz.ToLowercase() == "true")
             dic.set(key,CINIValue(true));
-        else if(tolower(sz) == "false")
+        else if(sz.ToLowercase() == "false")
             dic.set(key,CINIValue(false));
         //实数型
-        else if(Regex::Match(sz, @pRegex))
-            dic.set(key,CINIValue(atof(sz)));
+        else if(Regex::Match(temp, @pRegex))
+            dic.set(key,CINIValue(atof(temp)));
         //整数型
-        else if(Regex::Match(sz, @fRegex))
-            dic.set(key,CINIValue(atoi(sz)));
+        else if(Regex::Match(temp, @fRegex))
+            dic.set(key,CINIValue(atoi(temp)));
+        //向量型
+        else if(Regex::Match(temp, @vRegex))
+        {
+            array<string> tempAry = temp.Split(",");
+            dic.set(key,CINIValue(tempAry[0], tempAry[1], tempAry[2]));
+        }  
         //字符串
         else
-            dic.set(key,CINIValue(sz));
+            dic.set(key,CINIValue(temp));
         return dic;
     }
 

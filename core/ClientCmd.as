@@ -12,41 +12,26 @@ namespace pvpClientCmd
     {
         pvpLang::addLang("_CLIENTCMD_","ClientCmd");
         pvpClientCmd::RegistCommand("pvp_help","List avaliable keys","ClientCommand", @pvpClientCmd::ListCallback);
-        @pvpClientCmd::aryCmdKeys = pvpClientCmd::dicCmdList.getKeys();
     }
 
-	dictionary dicCmdList;
-	array<string> @aryCmdKeys;
+	array<CClientCmd@> aryClientCmd = {};
     funcdef void ClientCmdCallback( const CCommand@ );
 
 	void ListCallback(const CCommand@ Argments)
 	{
 		CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
-		string szPrint;
-		if(aryCmdKeys.length() == 0)
-			szPrint = pvpLang::getLangStr("_CLIENTCMD_","EMPCMD");
+		if(aryClientCmd.length() == 0)
+			g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTCONSOLE, pvpLang::getLangStr("_CLIENTCMD_","EMPCMD"));
 		else
 		{
-			uint f = 0;
 			g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTCONSOLE, pvpLang::getLangStr("_CLIENTCMD_","AVACMD") + "\n");
-			for(uint i = 0; i <= aryCmdKeys.length() - 1; i++ )
+			for(uint i = 0; i < aryClientCmd.length(); i++ )
 			{
-				CClientCmd@ data = cast<CClientCmd@>(dicCmdList[aryCmdKeys[i]]);
-				if(g_PlayerFuncs.AdminLevel(pPlayer) < ADMIN_YES && data.Flag != 0)
+				if( g_PlayerFuncs.AdminLevel(pPlayer) < CCMD_ADMIN && aryClientCmd[i].Flag != 0)
 					continue;
 				else
-				{
-					szPrint = szPrint + "[."+data.Name+"] | "+ data.HelpInfo + " | " + data.Printf + ".\n";
-					f++;
-				}
-				if( f % 2 == 0)
-				{
-					g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTCONSOLE, szPrint);
-					szPrint = "";
-				}
+					g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTCONSOLE, "[."+aryClientCmd[i].Name+"] | "+ aryClientCmd[i].HelpInfo + " | " + aryClientCmd[i].Printf + ".\n");
 			}
-			if( szPrint != "" )
-				g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTCONSOLE, szPrint);
 		}
 	}
 
@@ -58,6 +43,17 @@ namespace pvpClientCmd
 		private uint8 usFlag = 0;
 		private CClientCommand@ c_ClientCom;
 		private ClientCmdCallback@ c_CallBack;
+
+		CClientCmd(){}
+		CClientCmd(string _Name, string _Help, string _Print, uint8 _Flag, CClientCommand@ _Client, ClientCmdCallback@ _Call)
+		{
+			szName = _Name;
+			szHelpInfo = _Help;
+			szPrintf = _Print;
+			usFlag = _Flag;
+			@c_ClientCom = @_Client;
+			@c_CallBack = @_Call;
+		}
 		
 		string Name
 		{
@@ -94,33 +90,30 @@ namespace pvpClientCmd
 			get{ return c_CallBack;}
 			set{ @c_CallBack = value;}
 		}
+		
+		//排序
+		int opCmp(CClientCmd &in other) const
+		{
+			return szName.opCmp(other.szName);
+		}
 	}
 
 	void RegistCommand( string szName, string szHelpInfo, string szPrintf, ClientCmdCallback@ pCallback, int iFlags = CCMD_NONE )
 	{
-		CClientCmd command;
-		command.Name = szName;
-		command.HelpInfo = szHelpInfo;
-		command.Printf = szPrintf;
-		command.Flag = iFlags;
-		@command.ClientCallback = pCallback;
-		@command.ClientCommand = CClientCommand( szName, szHelpInfo, @HandelCallback, iFlags);
-		dicCmdList[szName] = command;
+		CClientCmd command(szName, szHelpInfo, szPrintf, iFlags, CClientCommand( szName, szHelpInfo, @HandelCallback, iFlags), pCallback);
+		aryClientCmd.insertLast(command);
+		aryClientCmd.sortAsc();
 	}
 
 	CClientCmd GetCommand( string szName )
 	{
-		if(dicCmdList.exists(szName))
+		for(uint i = 0; i < aryClientCmd.length(); i++)
 		{
-			CClientCmd@ data = cast<CClientCmd@>(dicCmdList[szName]);
-			return data;
+			if(aryClientCmd[i].Name == szName)
+				return aryClientCmd[i];
 		}
-		else
-		{
-			pvpLog::log(pvpLang::getLangStr("_CLIENTCMD_","QUECMD", szName));
-			CClientCmd data;
-			return data;
-		}
+		pvpLog::log(pvpLang::getLangStr("_CLIENTCMD_","QUECMD", szName));
+		return CClientCmd();
 	}
 
 	void HandelCallback( const CCommand@ Argments )
@@ -143,10 +136,10 @@ namespace pvpClientCmd
 		}
 		
 		CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
-		if(g_PlayerFuncs.AdminLevel(pPlayer) < ADMIN_YES)
+		if( g_PlayerFuncs.AdminLevel(pPlayer) < CCMD_ADMIN && data.Flag != 0)
 		{
-			if( data.Flag != 0)
-				pvpLog::say(pPlayer, "[" + data.Printf + "]" + pvpLang::getLangStr("_CLIENTCMD_","NADMIN", pvpPlayerData::getData(pPlayer, "Lang")));
+			pvpLog::say(pPlayer, "[" + data.Printf + "]" + pvpLang::getLangStr("_CLIENTCMD_","NADMIN", pvpPlayerData::getData(pPlayer, "Lang")));
+			return;
 		}
 		ClientCmdCallback@ Callback = @data.ClientCallback;
 		Callback( Argments);

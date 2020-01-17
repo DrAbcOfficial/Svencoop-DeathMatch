@@ -7,6 +7,7 @@ namespace pvpHook
         g_Hooks.RegisterHook(Hooks::Player::ClientPutInServer, @ClientPutInServer);
         g_Hooks.RegisterHook(Hooks::Player::ClientSay, @ClientSay);
         g_Hooks.RegisterHook(Hooks::Player::PlayerKilled, @PlayerKilled);
+        g_Hooks.RegisterHook(Hooks::Player::PlayerPreThink, @PlayerPreThink);
     }
 
     HookReturnCode PlayerKilled( CBasePlayer@ pPlayer, CBaseEntity@ pAttacker, int iGib )
@@ -18,6 +19,7 @@ namespace pvpHook
     HookReturnCode PlayerSpawn(CBasePlayer@ pPlayer)
     {
         pvpHitbox::playerSpawn(pPlayer);
+        ClassiscWeapon::PlayerSpwan(pPlayer);
         return HOOK_HANDLED;
     }
 
@@ -26,12 +28,15 @@ namespace pvpHook
         CBaseEntity@ pPlayer = g_EntityFuncs.Instance(info.pVictim.pev);
         CBaseEntity@ pAttacker = g_EntityFuncs.Instance(info.pAttacker.pev);
         CBaseEntity@ pInflictor = g_EntityFuncs.Instance(info.pInflictor.pev);
-        if (pPlayer !is null && pAttacker !is null && pInflictor!is null && pPlayer !is pAttacker)
-                        return HOOK_CONTINUE;
-        CBaseEntity@ pEntity = null;
-        while((@pEntity = g_EntityFuncs.FindEntityByTargetname(pEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)))) !is null)
+
+        //我杀我自己
+        if(pPlayer is pAttacker || (pAttacker !is null && pInflictor!is null))
         {
-            pEntity.TakeDamage(info.pInflictor.pev, info.pAttacker.pev, info.flDamage, info.bitsDamageType);
+            CBaseEntity@ pEntity = null;
+            while((@pEntity = g_EntityFuncs.FindEntityByTargetname(pEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)))) !is null)
+            {
+                pEntity.TakeDamage(info.pInflictor.pev, info.pAttacker.pev, info.flDamage, info.bitsDamageType);
+            }
         }
         info.flDamage = 0;
         return HOOK_CONTINUE;
@@ -41,6 +46,7 @@ namespace pvpHook
     {
         pvpPlayerData::PlayerPutinServer(pPlayer);
         pvpLang::PlayerPutinServer(pPlayer);
+        ClassiscWeapon::PlayerPutinServer(pPlayer);
         return HOOK_HANDLED;
     }
 
@@ -54,6 +60,12 @@ namespace pvpHook
             return HOOK_HANDLED;
         }
         pvpClientSay::postSayHook(pPlayer, pParams.GetArguments(), type);
+        return HOOK_HANDLED;
+    }
+
+    HookReturnCode PlayerPreThink( CBasePlayer@ pPlayer, uint& out uiFlags )
+    {
+        pvpHitbox::checkPlayerHitbox(pPlayer);
         return HOOK_HANDLED;
     }
 }

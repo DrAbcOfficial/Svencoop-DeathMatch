@@ -22,6 +22,33 @@ namespace pvpLog
        Printf(szString, level, iPosition);
     }
 
+    void log(CBaseEntity@&in pEntity,int&in level = SYSLOG,int&in iPosition = POSNON)
+    {
+        string szString = "";
+        szString += "classname:" + pEntity.pev.classname + "\n";
+        szString += "targetname:" + pEntity.pev.targetname + "\n";
+        szString += "netname:" + pEntity.pev.netname + "\n";
+        szString += "origin:(" + pvpUtility::vecToStr(pEntity.pev.origin) + ")\n";
+        szString += "angles:(" + pvpUtility::vecToStr(pEntity.pev.angles) +  ")\n";
+        Printf(szString, level, iPosition);
+    }
+
+    void log(entvars_t@&in pevEntity,int&in level = SYSLOG,int&in iPosition = POSNON)
+    {
+        string szString = "";
+        szString += "classname:" + pevEntity.classname + "\n";
+        szString += "targetname:" + pevEntity.targetname + "\n";
+        szString += "netname:" + pevEntity.netname + "\n";
+        szString += "origin:(" + pvpUtility::vecToStr(pevEntity.origin) +  ")\n";
+        szString += "angles:(" + pvpUtility::vecToStr(pevEntity.angles) +  ")\n";
+        Printf(szString, level, iPosition);
+    }
+
+    void log(Vector&in vecStr,int&in level = SYSLOG,int&in iPosition = POSNON)
+    {
+       Printf("(" + vecStr.x + "," + vecStr.y + "," + vecStr.z + ")", level, iPosition);
+    }
+
     void log(array<string>&in ayString,int&in level = SYSLOG,int&in iPosition = POSNON)
     {
         string szBuffer = "";

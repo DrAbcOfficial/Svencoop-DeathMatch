@@ -5,7 +5,6 @@ namespace pvpClientSay
     array<pvpSayFunc@> arypreSayfuncs = {};
     array<pvpSayFunc@> arypostSayfuncs = {};
 
-    bool bSayParament = false;
     class pvpSayFunc
     {
          //提供构造函数方便创建类
@@ -24,38 +23,13 @@ namespace pvpClientSay
             return uniName; 
         }
     }
-
-    void PluginInit()
+    //注册
+    void RegisteSayFunc(string&in name, sayCallback@&in callback)
     {
-        bSayParament = pvpConfig::getConfig("ClientSay","Enable").getBool();
-        arypreSayfuncs.insertLast(pvpSayFunc("Sayparament", @paramentSayHook));
-        //查看系统语言和可选语言
-        pvpClientCmd::RegistCommand("admin_sayparament","Toggle the say parament","Say", @pvpClientSay::sayRepCallback, CCMD_ADMIN);
+        pvpClientSay::arypreSayfuncs.insertLast(pvpClientSay::pvpSayFunc(name, @callback));
     }
-
-    void sayRepCallback(const CCommand@ pArgs)
-	{
-        CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
-        int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
-        int tempInt = 0;
-        if(pArgs.ArgC() == 1)
-        {
-            bSayParament = !bSayParament;
-            pvpConfig::setConfig("ClientSay","Enable", bSayParament);
-            pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDTLG", pIndex));
-            return;
-        }
-        string tempStr = pArgs[1].ToUppercase();
-        tempStr.Trim();
-        tempInt = Math.clamp(0 ,1, atoi(tempStr));
-        switch(tempInt)
-        {
-            case 0: bSayParament = false;pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDOFF", pIndex));break;
-            case 1: bSayParament = true; pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pIndex));break;
-        }
-        pvpConfig::setConfig("ClientSay","Enable", bSayParament);
-	}
-
+    
+    //替换原来的全员发送消息
     void sayDelg(CBasePlayer@&in pPlayer, string szSth, ClientSayType SayType)
     {
         if( SayType == CLIENTSAY_SAY )
@@ -84,37 +58,6 @@ namespace pvpClientSay
             g_Log.PrintF( "Msg. in team" + pPlayer.GetClassification(0) + "." + pvpUtility::getTime() + " - " + szSth);
 		}
         
-    }
-
-    bool paramentSayHook(CBasePlayer@ pPlayer, const CCommand@ pArgument, ClientSayType SayType)
-    {
-        if(bSayParament == false)
-            return true;
-        int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
-        string tempStr = pArgument.GetCommandString();
-        if(tempStr.IsEmpty())
-            return true;
-        string repStr = pvpConfig::getConfig("ClientSay","Weapon").getString();
-        if(tempStr.Find(repStr) != String::INVALID_INDEX )
-        {
-            string weaponStr = string(pPlayer.m_hActiveItem.GetEntity().pev.classname);
-            weaponStr = string(pvpLang::getLangStr("_HITBOX_",weaponStr)) == "" ? weaponStr : string(pvpLang::getLangStr("_HITBOX_",weaponStr, pIndex));
-            tempStr = tempStr.Replace(repStr, weaponStr);
-        }
-        repStr = pvpConfig::getConfig("ClientSay","Pos").getString();
-        if(tempStr.Find(repStr) != String::INVALID_INDEX )
-        {
-            string vecStr = "(" + int(pPlayer.pev.origin.x) + "," + int(pPlayer.pev.origin.y) + "," + int(pPlayer.pev.origin.z) + ")";
-            tempStr = tempStr.Replace(repStr, vecStr);
-        }
-        repStr = pvpConfig::getConfig("ClientSay","Hp").getString();
-        if(tempStr.Find(repStr) != String::INVALID_INDEX )
-            tempStr = tempStr.Replace(repStr, int(pPlayer.pev.health));
-        repStr = pvpConfig::getConfig("ClientSay","Ap").getString();
-        if(tempStr.Find(repStr) != String::INVALID_INDEX )
-            tempStr = tempStr.Replace(repStr, int(pPlayer.pev.armorvalue));
-        sayDelg(pPlayer, tempStr, SayType);
-        return false;
     }
 
     bool preSayHook(CBasePlayer@ pPlayer, const CCommand@ pArgument, ClientSayType SayType)
