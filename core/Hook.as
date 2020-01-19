@@ -8,11 +8,19 @@ namespace pvpHook
         g_Hooks.RegisterHook(Hooks::Player::ClientSay, @ClientSay);
         g_Hooks.RegisterHook(Hooks::Player::PlayerKilled, @PlayerKilled);
         g_Hooks.RegisterHook(Hooks::Player::PlayerPreThink, @PlayerPreThink);
+        g_Hooks.RegisterHook(Hooks::Player::ClientDisconnect, @ClientDisconnect);
     }
+
+    HookReturnCode ClientDisconnect(CBasePlayer@ pPlayer )
+    {
+        pvpHitbox::RemoveHitbox(pPlayer);
+        return HOOK_HANDLED;
+    }
+
 
     HookReturnCode PlayerKilled( CBasePlayer@ pPlayer, CBaseEntity@ pAttacker, int iGib )
     {
-        pvpHitbox::playerKilled(pPlayer);
+        pvpHitbox::RemoveHitbox(pPlayer);
         return HOOK_HANDLED;
     }
 
@@ -54,9 +62,9 @@ namespace pvpHook
     {
         CBasePlayer@ pPlayer = pParams.GetPlayer();
         ClientSayType type = pParams.GetSayType();
+        pParams.set_ShouldHide(true);
         if(!pvpClientSay::preSayHook(pPlayer, pParams.GetArguments(), type))
         {
-            pParams.set_ShouldHide(true);
             return HOOK_HANDLED;
         }
         pvpClientSay::postSayHook(pPlayer, pParams.GetArguments(), type);

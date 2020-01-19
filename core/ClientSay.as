@@ -43,17 +43,16 @@ namespace pvpClientSay
 		}
 		else
 		{
+            //先判断再发送消息，一来减少占用，而来避免bug
+            if ( pPlayer.IsAlive() == true )
+				szSth = "(TEAM) " + string(pPlayer.pev.netname) + ": " + szSth + "\n";
+			else
+				szSth = "(TEAM) *DEAD* " + string(pPlayer.pev.netname) + ": " + szSth + "\n";
 			for ( int i = 1; i <= g_Engine.maxClients; ++i )
 			{
 				CBasePlayer@ tPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
 				if ( tPlayer !is null && tPlayer.IsConnected() && tPlayer.GetClassification( 0 ) == pPlayer.GetClassification( 0 ) )
-				{
-					if ( pPlayer.IsAlive() == true )
-						szSth = "(TEAM) " + string(pPlayer.pev.netname) + ": " + szSth + "\n";
-					else
-						szSth = "(TEAM) *DEAD* " + string(pPlayer.pev.netname) + ": " + szSth + "\n";
                     g_PlayerFuncs.SayText( tPlayer, szSth );
-				}
 			}
             g_Log.PrintF( "Msg. in team" + pPlayer.GetClassification(0) + "." + pvpUtility::getTime() + " - " + szSth);
 		}

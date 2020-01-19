@@ -1,42 +1,31 @@
+#include "../Entity/core/trigger_hitbox"
+
+enum DEADTYPE
+{
+    DEAD_NONE = -1,
+    DEAD_KILLED,
+    DEAD_SUICIDE,
+    DEAD_MONSTER,
+    DEAD_ACCIDENT
+}
+
+enum PANICHUD_POS
+{
+    POS_NONE,
+    POS_ALL,
+    POS_UPPERLEFT = 1,
+    POS_TOP,
+    POS_UPPERRIGHT,
+    POS_RIGHT,
+    POS_DOWNERRIGHT,
+    POS_DOWN,
+    POS_DOWNERLEFT,
+    POS_LEFT,
+    POS_CENTER
+}
+
 namespace pvpHitbox
 {
-    void PluginInit()
-    {
-        pvpLang::addLang("_HITBOX_","Hitbox");
-        strHitbox = pvpConfig::getConfig("Hitbox","Model").getString();
-        bShowHitbox = pvpConfig::getConfig("Hitbox","Show").getBool();
-        //显示hitbox
-        pvpClientCmd::RegistCommand("admin_showhitbox","Show hitbox or not","Hitbox",@pvpHitbox::ChangeShowCall, CCMD_ADMIN);
-    }
-
-    void MapInit()
-    {
-        g_CustomEntityFuncs.RegisterCustomEntity( "trigger_hitbox", "trigger_hitbox" );
-		g_Game.PrecacheOther("trigger_hitbox");
-    }
-
-    void playerSpawn( CBasePlayer@ pPlayer )
-	{
-		CBaseEntity@ pEntity = g_EntityFuncs.Create( "trigger_hitbox", pPlayer.pev.origin, pPlayer.pev.angles, true, pPlayer.edict());
-        pEntity.pev.targetname = pvpUtility::getSteamId(pPlayer);
-        g_EntityFuncs.DispatchSpawn( pEntity.edict() );
-	}
-
-    void playerKilled(CBasePlayer@ pPlayer)
-    {
-        CBaseEntity@ pEntity = null;
-        while((@pEntity = g_EntityFuncs.FindEntityByTargetname(pEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)))) !is null)
-        {
-            g_EntityFuncs.Remove(pEntity);
-        }
-    }
-
-    void checkPlayerHitbox(CBasePlayer@ pPlayer)
-    {
-        //能触摸，但是不阻挡
-        pPlayer.pev.solid = SOLID_TRIGGER;
-    }
-
     //复活时间
     const float m_flRespwantime = g_EngineFuncs.CVarGetFloat("mp_respawndelay");
     /**
@@ -53,7 +42,71 @@ namespace pvpHitbox
     array<postDamageCallback@> postCallList = {};
     //模型
     string strHitbox = "models/player.mdl";
+    //是否显示模型
     bool bShowHitbox = false;
+    //伤害指示器spr
+    string strPanic;
+    //伤害指示器频道
+    uint8 uiPanicChannel = 15;
+    //玩家RGBA数据库
+    dictionary dicPlayerColor;
+
+    void PluginInit()
+    {
+        pvpLang::addLang("_HITBOX_","Hitbox");
+        strHitbox = pvpConfig::getConfig("Hitbox","Model").getString();
+        strPanic = pvpConfig::getConfig("Hitbox","PanicSpr").getString();
+        bShowHitbox = pvpConfig::getConfig("Hitbox","Show").getBool();
+        uiPanicChannel = uint8(pvpConfig::getConfig("Hitbox","PanicChannel").getInt());
+        //显示hitbox
+        pvpClientCmd::RegistCommand("admin_showhitbox","Show hitbox or not","Hitbox",@pvpHitbox::ChangeShowCall, CCMD_ADMIN);
+        //改变伤害指示器颜色
+        pvpClientCmd::RegistCommand("player_paniccolor","Change your panic indicator color","Hitbox",@pvpHitbox::PanicColorCall);
+    }
+
+    void MapInit()
+    {
+        g_CustomEntityFuncs.RegisterCustomEntity( "trigger_hitbox", "trigger_hitbox" );
+		g_Game.PrecacheOther("trigger_hitbox");
+        g_Game.PrecacheModel( "sprites/" +  strPanic);
+    }
+
+    void playerSpawn( CBasePlayer@ pPlayer )
+	{
+		CBaseEntity@ pEntity = g_EntityFuncs.Create( "trigger_hitbox", pPlayer.pev.origin, pPlayer.pev.angles, true, pPlayer.edict());
+        pEntity.pev.targetname = pvpUtility::getSteamId(pPlayer);
+        g_EntityFuncs.DispatchSpawn( pEntity.edict() );
+	}
+
+    void RemoveHitbox(CBasePlayer@ pPlayer)
+    {
+        CBaseEntity@ pEntity = null;
+        while((@pEntity = g_EntityFuncs.FindEntityByTargetname(pEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)))) !is null)
+        {
+            g_EntityFuncs.Remove(pEntity);
+        }
+    }
+
+    void checkPlayerHitbox(CBasePlayer@ pPlayer)
+    {
+        //能触发，但是不阻挡
+        pPlayer.pev.solid = SOLID_TRIGGER;
+    }
+
+    void PanicColorCall(const CCommand@ pArgs)
+    {
+        CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
+        int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
+        if(pArgs.ArgC() < 4)
+        {
+            pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "AVACMD", pIndex));
+            pvpLog::say(pPlayer, ".player_paniccolor <Red> <Green> <Blue>");
+            pvpLog::say(pPlayer, "Example: player_paniccolor 255 0 123");
+            return;
+        }
+        dicPlayerColor[pvpUtility::getSteamId(pPlayer)] = pvpUtility::preProcessColor(RGBA(atoui(pArgs[1]), atoui(pArgs[2]), atoui(pArgs[3]), 255));
+        pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pIndex));
+    }
 
     void doCommand()
     {
@@ -97,110 +150,180 @@ namespace pvpHitbox
         }
         doCommand();
 	}
-}
 
-enum DEADTYPE
-{
-    DEAD_NONE = -1,
-    DEAD_KILLED,
-    DEAD_SUICIDE,
-    DEAD_MONSTER,
-    DEAD_ACCIDENT
-}
-
-const Vector PLAYER_HULL_MIN = Vector(-16,-16,-36);
-const Vector PLAYER_HULL_MAX = Vector(16,16,20);
-const Vector PLAYER_HEAD_MIN = Vector(-8,-8,20);
-const Vector PLAYER_HEAD_MAX = Vector(8,8,36);
-
-//基类
-class trigger_hitbox : ScriptBaseMonsterEntity
-{
-    private Vector m_vecMins,m_vecMaxs;
-    private CBasePlayer@ m_pPlayer = null;
-    private bool bDeadFlag = false;
-    private int clClassify = CLASS_HUMAN_MILITARY;
-
-    protected Vector m_vecHullmin;
-    protected Vector m_vecHullmax;
-
-    CBaseEntity@ OwnerEnt
+    //角度分划表
+    const array<double> aryPanicAngles = { 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5 };
+    //区块分划表
+    const array<array<int>> mapPanicIndex = {
+        {POS_TOP},
+        {POS_UPPERRIGHT},
+        {POS_NONE, POS_RIGHT},
+        {POS_NONE, POS_NONE, POS_DOWNERRIGHT},
+        {POS_NONE, POS_NONE, POS_NONE, POS_DOWN},
+        {POS_NONE, POS_NONE, POS_NONE, POS_NONE, POS_DOWNERLEFT},
+        {POS_NONE, POS_NONE, POS_NONE, POS_NONE, POS_NONE, POS_LEFT},
+        {POS_NONE, POS_NONE, POS_NONE, POS_NONE, POS_NONE, POS_NONE, POS_UPPERLEFT, POS_TOP}
+    };
+    //SPR区块分划表
+    const array<array<uint8>> mapHudPos={
+        {0,0,0},
+        {170,0,86},
+        {86,0,84},
+        {0,0,86},
+        {0,86,84},
+        {0,170,86},
+        {86,170,84},
+        {170,170,86},
+        {170,86,84},
+        {86,86,84}
+    };
+    //XY偏移量表
+    const array<Vector2D> mapSprXY={
+        Vector2D(0,0),
+        Vector2D(0.1,-0.1),
+        Vector2D(0,-0.1),
+        Vector2D(-0.1,-0.1),
+        Vector2D(-0.1,0),
+        Vector2D(-0.1,0.1),
+        Vector2D(0,0.1),
+        Vector2D(0.1,0.1),
+        Vector2D(0.1,0),
+        Vector2D(0,0)
+    };
+    void sendPanicFeed(CBasePlayer@pPlayer, entvars_t@ pevAttacker, entvars_t@ pevInflictor)
     {
-        get const	{ return g_EntityFuncs.Instance( pev.owner ); }
-    }
-    
-    bool KeyValue( const string& in szKey, const string& in szValue )
-    {
-        return BaseClass.KeyValue( szKey, szValue );
-    }
+         /**
+            spr切分序号
+            3 2 1
+            4 9 8       0 代表不切分整个送出
+            5 6 7
+        **/
+        //HUD序号，默认整个HUD图都推送
+        int indexHud = 0;
 
-    void Precache()
-    {
-        BaseClass.Precache();
-        g_Game.PrecacheModel( self, pvpHitbox::strHitbox );
-    }
-
-    void Spawn()
-    {
-        Precache();
-        @m_pPlayer = cast<CBasePlayer@>(g_EntityFuncs.Instance(pev.owner));
-        g_EntityFuncs.SetModel( self, pvpHitbox::strHitbox );
-
-        if( pev.owner !is null )
-        {
-            //无敌
-            pev.health = Math.FLOAT_MAX;
-            //跟随玩家
-            pev.movetype	= MOVETYPE_FOLLOW;
-            @pev.aiment		= @pev.owner;
-            pev.solid		= SOLID_SLIDEBOX;
-            pev.colormap	= pev.owner.vars.colormap;
-            pev.frags       = m_pPlayer.pev.frags;
-            self.m_bloodColor	= BLOOD_COLOR_RED;
-            self.m_FormattedName = m_pPlayer.pev.netname;
-
-            //隐藏
-            if(pvpHitbox::bShowHitbox)
-            {
-                pev.rendermode = 0;
-                pev.renderamt = 100;
-            }
-            else
-            {
-                pev.rendermode = kRenderTransTexture;
-                pev.renderamt = 0;
-            }
-
-            //可受伤害
-            pev.flags |= FL_MONSTER;
-            pev.takedamage	= DAMAGE_AIM | DAMAGE_YES;
-            
-
-            //设置为人类敌人
-            self.SetClassification(clClassify);
-
-            g_EntityFuncs.SetSize( pev, m_pPlayer.pev.mins, m_pPlayer.pev.maxs );
-        }
-    }
-
-    /**
-    void Think()
-    {
-        pvpLog::log(pev);
-        if(m_pPlayer.pev.flags & FL_DUCKING == 0)
-            g_EntityFuncs.SetSize( pev, PLAYER_HULL_MIN, PLAYER_HULL_MAX );
+        //是大地打的你！
+        CBaseEntity@ pAttacker = g_EntityFuncs.Instance(pevAttacker);
+        if(!pAttacker.IsPlayer() && !pAttacker.IsMonster())
+            indexHud = 9;
         else
-            g_EntityFuncs.SetSize( pev, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX );
-        
-        pev.nextthink = g_Engine.time + 1;
+        {
+            //谁才是真的攻击者
+            entvars_t@ tempEntity = null;
+            if( pevInflictor.classname == "player" )
+                @tempEntity = @pevAttacker;
+            else
+                @tempEntity = @pevInflictor;
+
+            //获取攻击者坐标
+            Vector vecAttack = tempEntity.origin;
+            //获取受害者坐标
+            Vector vecVictim = pPlayer.pev.origin;
+            //获取最终的向量
+            Vector vecFinal = vecAttack - vecVictim;
+            //不要z轴，即取xy面的投影
+            vecFinal = Vector(vecFinal.x, vecFinal.y, 0);
+            //获取长度
+            float flLength = vecFinal.Length();
+            //只有不在你头上脚下的才全推
+            if(flLength > 32)
+            {
+                //化向量为极坐标
+                vecFinal = Math.VecToAngles(vecFinal);
+                //以玩家角度为轴
+                vecFinal = vecFinal - pPlayer.pev.angles;
+                //pvpLog::log(vecFinal);
+                /**
+                    只需要y坐标
+                        0
+                    90 你  270
+                        180
+                **/
+                float flAngle = vecFinal.y;
+                //pvpLog::log(flAngle);
+                /**
+                        大于   小于
+                    1: 292.5 ~ 337.5
+                    2: 337.5 | 22.5
+                    3: 22.5 ~ 67.5
+                    4: 67.5 ~ 112.5
+                    5: 112.5 ~ 157.5
+                    6: 157.5 ~ 202.5
+                    7: 202.5 ~ 247.5
+                    8: 247.5 ~ 292.5
+                **/
+                //获取比较值最小的序号
+                int indexMin = -1;
+                for(uint i = 0; i < aryPanicAngles.length();i++)
+                {
+                    if( flAngle < aryPanicAngles[i])
+                    {
+                        indexMin = i;
+                        break;
+                    }
+                }
+                //没有比这个大的，返回数组长度 - 1
+                if(indexMin == -1)
+                    indexMin = aryPanicAngles.length() - 1;
+                //获取比较值最大的序号
+                int indexMax = -1;
+                for(uint i = aryPanicAngles.length() - 1; i > 0;i--)
+                {
+                    if( flAngle > aryPanicAngles[i])
+                    {
+                        indexMax = i;
+                        break;
+                    }
+                }
+                //没有比这个小的，返回0
+                if(indexMax == -1)
+                    indexMax = 0;
+                /** Min Max Index
+                    0    0 - 2
+                    1    0 - 3
+                    2    1 - 4
+                    3    2 - 5
+                    4    3 - 6
+                    5    4 - 7
+                    6    5 - 8
+                    7    6 - 1
+                    7    7 - 2
+                **/
+                indexHud = mapPanicIndex[indexMin][indexMax];
+            }
+        }
+        /**     top↓
+            left→ ←width
+                height↑
+            i   l   t   w   h
+            1   170 0   86  86
+            2   86  0   84  84
+            3   0   0   86  86
+            4   0   86  84  84
+            5   0   170 86  86
+            6   86  170 84  84
+            7   170 170 86  86
+            8   170 86  84  84
+            9   86  86  84  84
+        **/
+        //输出hud了
+        HUDSpriteParams params;
+            params.channel = uiPanicChannel;
+		    params.flags = HUD_ELEM_DEFAULT_ALPHA | HUD_ELEM_SCR_CENTER_X | HUD_ELEM_SCR_CENTER_Y;
+            params.x = mapSprXY[indexHud].x;
+            params.y = mapSprXY[indexHud].y;
+            params.spritename = strPanic;
+            string steamId = pvpUtility::getSteamId(pPlayer);
+            params.color1 = dicPlayerColor.exists(steamId) ? RGBA(dicPlayerColor[steamId]) : RGBA_RED;
+            params.holdTime = 1;
+            params.fadeoutTime = 0.1;
+            params.left = mapHudPos[indexHud][0];
+            params.top = mapHudPos[indexHud][1];
+            params.width = mapHudPos[indexHud][2];
+            params.height = mapHudPos[indexHud][2];
+        g_PlayerFuncs.HudCustomSprite(pPlayer, params);
     }
 
-**/
-    int Classify()
-    {
-        return clClassify;
-    }
-
+    //这些都是写死的静态的东西，大概这样能少点内存占用？
     //他杀
     string doKillFeed(CBaseEntity@ pAttacker , CBaseEntity@ pInflictor ,int&in index)
     {
@@ -212,7 +335,7 @@ class trigger_hitbox : ScriptBaseMonsterEntity
     }
     
     //自杀
-    string doSuicide(int bitsDamageType, int&in index)
+    string doSuicide(CBasePlayer@ m_pPlayer, int bitsDamageType, int&in index)
     {
         string suicidereason = "";
         int8 deathtype = 0;
@@ -224,7 +347,7 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         return suicidereason;
     }
     //怪物杀
-    string doMonsterKill(CBaseEntity@ pInflictor ,int&in index)
+    string doMonsterKill(CBasePlayer@ m_pPlayer, CBaseEntity@ pInflictor ,int&in index)
     {
         CBaseMonster@ pMonster = cast<CBaseMonster@>(pInflictor);
         string szOwnername = "";
@@ -233,169 +356,10 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         return szOwnername + pvpLang::getLangStr("_HITBOX_","DMN" + Math.RandomLong(1,2), string(pMonster.m_FormattedName), string(m_pPlayer.pev.netname), index);
     }
     //意外杀
-    string doAccident( int bitsDamageType ,int&in pIndex)
+    string doAccident(CBasePlayer@ m_pPlayer, int bitsDamageType ,int&in pIndex)
     {
         int index = int(pvpUtility::getLog(bitsDamageType,2));
         string szReturn = pvpLang::getLangStr("_HITBOX_","DAC" + index + Math.RandomLong(0,1), string(m_pPlayer.pev.netname), pIndex);
         return szReturn.IsEmpty() ? pvpLang::getLangStr("_HITBOX_","DACA" + Math.RandomLong(0,1), string(m_pPlayer.pev.netname), pIndex) : szReturn;
-    }
-    //大概是真的死了
-    void doDeath( float&in flTake )
-    {
-        if( flTake <= 200 )
-            m_pPlayer.SetAnimation( PLAYER_DIE );
-        else
-        {	
-            m_pPlayer.pev.rendermode = 1;
-            m_pPlayer.pev.renderamt = 0;
-            g_EntityFuncs.SpawnRandomGibs(m_pPlayer.pev, 1, 1);
-            g_SoundSystem.PlaySound(m_pPlayer.edict(), CHAN_AUTO, "common/bodysplat.wav", 1.0f, 1.0f);
-        }
-        m_pPlayer.pev.health = 0;
-        m_pPlayer.pev.armorvalue = 0;
-        m_pPlayer.pev.deadflag = DEAD_DYING;
-        ++m_pPlayer.m_iDeaths;
-        //别忘了摧毁这个Hitbox
-        g_EntityFuncs.Remove(self);
-    }
-
-    int DeliverDamage(float&in Ap, float&in Hp,float&in Take, entvars_t@ pevAttacker, entvars_t@ pevInflictor, int bitsDamageType)
-    {
-        CBasePlayer@ pAttacker = cast<CBasePlayer@>(g_EntityFuncs.Instance(pevAttacker));
-        CBaseEntity@ pInflictor = g_EntityFuncs.Instance(pevInflictor);
-        //扣血扣甲
-        m_pPlayer.pev.armorvalue = Ap;
-        m_pPlayer.pev.health = Hp;
-        m_pPlayer.pev.dmg_take += Take;
-
-        //如果死亡将玩家传递死亡，并用keyvalue标记为已死
-        if (m_pPlayer.pev.health <= 0)
-        {
-            bDeadFlag = true;
-            //判断死亡类型
-            int deathFlag = DEAD_NONE;
-            if(pAttacker !is null && pAttacker.IsPlayer() && pAttacker.IsNetClient())
-            {
-                if( pAttacker !is m_pPlayer )	
-                    deathFlag = DEAD_KILLED;
-                else
-                    deathFlag = DEAD_SUICIDE;
-            }
-            else if( pevAttacker !is null && g_EntityFuncs.Instance(pevAttacker).IsMonster())
-                deathFlag = DEAD_MONSTER;
-            else
-                deathFlag = DEAD_ACCIDENT;
-
-            //向玩家输出死亡原因
-            string szPrintf;
-            for ( int i = 1; i <= g_Engine.maxClients; ++i )
-		    {
-                CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex( i );
-                if ( pPlayer !is null && pPlayer.IsConnected() )
-                {
-                    int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
-                    switch(deathFlag)
-                    {
-                        case DEAD_KILLED:
-                            szPrintf = string(pAttacker.pev.netname) + " :: ["  + doKillFeed(pAttacker, pInflictor, pIndex) + "] :: " + string(m_pPlayer.pev.netname) + "\n";
-                            break;
-                        case DEAD_SUICIDE:
-                            szPrintf = doSuicide(bitsDamageType, pIndex);
-                            break;
-                        case DEAD_MONSTER:
-                            szPrintf = doMonsterKill(pInflictor, pIndex);
-                            break;
-                        case DEAD_ACCIDENT:
-                            szPrintf = doAccident(bitsDamageType, pIndex);
-                            break;
-                    }
-                    //左上角来点输出
-                    g_PlayerFuncs.ClientPrint(pPlayer, HUD_PRINTNOTIFY, szPrintf + "\n");	
-	            }
-		    }
-            //加减分数情况
-            switch(deathFlag)
-            {
-                case DEAD_KILLED: ++pAttacker.pev.frags;break;
-                case DEAD_SUICIDE: --m_pPlayer.pev.frags;break;
-                default:break;
-            }
-            //大概是真的死了
-            doDeath(Take);
-            //此时返回1
-            return 1;
-        }
-        //0代表正常,玩家未死
-        return 0;
-    }
-
-    bool PreTakeDamage(entvars_t@ pevAttacker, float flDamage, int bitsDamageType)
-    {
-        bool bFlag = true;
-        //遍历数组挨个执行
-        for(uint i = 0; i< pvpHitbox::preCallList.length(); i++)
-        {
-            //执行类里的函数,只要有false，那就阻断
-            bFlag = bFlag && pvpHitbox::preCallList[i](m_pPlayer, pevAttacker, flDamage, bitsDamageType);
-        }
-        return bFlag;
-    }
-
-    void PostTakeDamage()
-    {
-        //遍历数组挨个执行
-        for(uint i = 0; i< pvpHitbox::preCallList.length(); i++)
-        {
-            //执行类里的函数
-            pvpHitbox::postCallList[i](m_pPlayer);
-        }
-    }
-
-    int TakeDamage(entvars_t@ pevInflictor, entvars_t@ pevAttacker, float flDamage, int bitsDamageType)
-    {
-         //人都死了
-        if(bDeadFlag)
-            return 0;
-        
-        //摔伤不用这个算
-        //才怪
-        //if(pevAttacker is null)
-        //    return 0;
-
-        //先修改伤害信息
-        //先获取属主血量护甲量
-        float pPlayerHp = m_pPlayer.pev.health;
-        float pPlayerAp = m_pPlayer.pev.armorvalue;
-        if (pPlayerAp != 0 && !(bitsDamageType & (DMG_FALL | DMG_DROWN) != 0) )
-	    {
-            //从配置中获取减伤率和加成量
-            float flARRatio = pvpConfig::getConfig("Hitbox","ARRatio").getFloat();
-            float flARBonus = pvpConfig::getConfig("Hitbox","ARBonus").getFloat();
-            //计算护甲减伤，算出扣甲量
-            float flDamageNew = flDamage * flARRatio;
-            float flArmor = (flDamage - flDamageNew) * flARBonus;
-            if (flArmor > pPlayerAp)
-            {
-                flArmor = pPlayerAp;
-                flArmor *= (1.0f/flARBonus);
-                flDamageNew = flDamage - flArmor;
-                pPlayerAp = 0;
-            }
-            else
-                pPlayerAp -= flArmor;
-            flDamage = flDamageNew;
-        }
-
-        float flTake = flDamage;
-
-        pPlayerHp -= flTake;
-        //然后传递给属主
-        if(PreTakeDamage(pevAttacker, flDamage, bitsDamageType))
-            DeliverDamage(pPlayerAp, pPlayerHp, flTake, pevAttacker, pevInflictor, bitsDamageType);
-        PostTakeDamage();
-        //直接结束，不call原来的
-        flDamage = 0;//记得清空这个
-        bitsDamageType = 0;
-        return 0;
     }
 }

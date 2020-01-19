@@ -272,7 +272,7 @@ namespace ClassiscWeapon
         }
         string tempStr = pArgs[1].ToUppercase();
         tempStr.Trim();
-        Vector tempVec = prepraseColor(Vector(atof(pArgs[2]), atof(pArgs[3]), atof(pArgs[4])));
+        Vector tempVec = pvpUtility::preProcessColor(Vector(atof(pArgs[2]), atof(pArgs[3]), atof(pArgs[4])));
         if(tempStr == "LASER")
             setPlayerColor(pPlayer, tempVec, COLOR_LASER);
         else if(tempStr == "DOT")
@@ -287,15 +287,4 @@ namespace ClassiscWeapon
             setPlayerColor(pPlayer, tempVec, COLOR_TRAIL);
         pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pIndex));
 	}
-
-    Vector prepraseColor(Vector&in vec)
-    {
-        float max = vec.x;
-        max = Math.max(max, vec.y);
-        max = Math.max(max, vec.z);
-        if(max == 0)
-            return Vector(255, 255, 255);
-        max = 255/max;
-        return Vector(vec.x * max, vec.y * max, vec.z * max);
-    }
 }

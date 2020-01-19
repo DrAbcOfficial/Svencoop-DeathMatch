@@ -56,6 +56,7 @@ namespace pvpUtility
         return bTemp;
     }
 
+    //向量到字符串
     string vecToStr(Vector&in vec)
     {
         return string(vec.x) + "," + string(vec.y) + "," + string(vec.z);
@@ -81,5 +82,28 @@ namespace pvpUtility
                 return i;
         }
         return -1;
+    }
+
+    //使用户输入的颜色明显化(将最高一项拉到255)
+    Vector preProcessColor(Vector&in vec)
+    {
+        float max = vec.x;
+        max = Math.max(max, vec.y);
+        max = Math.max(max, vec.z);
+        if(max == 0)
+            return Vector(255, 255, 255);
+        max = 255/max;
+        return Vector(vec.x * max, vec.y * max, vec.z * max);
+    }
+    //RGBA格式的重载
+    RGBA preProcessColor(RGBA&in rgb)
+    {
+        float max = rgb.r;
+        max = Math.max(max, rgb.g);
+        max = Math.max(max, rgb.b);
+        if(max == 0)
+            return RGBA(255, 255, 255, 255);
+        max = 255/max;
+        return RGBA(uint(rgb.r * max), uint(rgb.g * max), uint(rgb.b * max), 255);
     }
 }
