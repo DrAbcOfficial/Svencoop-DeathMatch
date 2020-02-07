@@ -40,11 +40,9 @@ namespace pvpHook
         //我杀我自己
         if(pPlayer is pAttacker || (pAttacker !is null && pInflictor!is null))
         {
-            CBaseEntity@ pEntity = null;
-            while((@pEntity = g_EntityFuncs.FindEntityByTargetname(pEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)))) !is null)
-            {
-                pEntity.TakeDamage(info.pInflictor.pev, info.pAttacker.pev, info.flDamage, info.bitsDamageType);
-            }
+            CBaseHitbox@ pHitbox = pvpHitbox::GetHitBox(cast<CBasePlayer@>(pPlayer));
+            if(pHitbox !is null)
+                pHitbox.TakeDamage(info.pInflictor.pev, info.pAttacker.pev, info.flDamage, info.bitsDamageType);
         }
         info.flDamage = 0;
         return HOOK_CONTINUE;

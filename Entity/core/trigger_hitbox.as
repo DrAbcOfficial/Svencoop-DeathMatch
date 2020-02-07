@@ -1,11 +1,10 @@
 
 //基类
-class trigger_hitbox : ScriptBaseMonsterEntity
+class CBaseHitbox : ScriptBaseMonsterEntity
 {
     private Vector m_vecMins,m_vecMaxs;
     private CBasePlayer@ m_pPlayer = null;
     private bool bDeadFlag = false;
-    private int clClassify = CLASS_HUMAN_MILITARY;
 
     protected Vector m_vecHullmin;
     protected Vector m_vecHullmax;
@@ -40,10 +39,12 @@ class trigger_hitbox : ScriptBaseMonsterEntity
             pev.movetype	= MOVETYPE_FOLLOW;
             @pev.aiment		= @pev.owner;
             pev.solid		= SOLID_SLIDEBOX;
-            pev.colormap	= pev.owner.vars.colormap;
+            pev.colormap	= m_pPlayer.pev.colormap;
             pev.frags       = m_pPlayer.pev.frags;
             self.m_bloodColor	= BLOOD_COLOR_RED;
             self.m_FormattedName = m_pPlayer.pev.netname;
+            //设置好team
+            pev.team = m_pPlayer.pev.team;
 
             //隐藏
             if(pvpHitbox::bShowHitbox)
@@ -61,25 +62,42 @@ class trigger_hitbox : ScriptBaseMonsterEntity
             pev.flags |= FL_MONSTER;
             pev.takedamage	= DAMAGE_AIM | DAMAGE_YES;
             
-
-            //设置为人类敌人
-            self.SetClassification(clClassify);
+            //设置队伍
+            self.SetClassification(pev.team == 0 ? CLASS_HUMAN_MILITARY : CLASS(pev.team));
 
             g_EntityFuncs.SetSize( pev, m_pPlayer.pev.mins, m_pPlayer.pev.maxs );
         }
     }  
+
+    //更新玩家的状态
+    void Update()
+    {
+        pev.movetype	= MOVETYPE_FOLLOW;
+        @pev.aiment		= @pev.owner;
+        pev.colormap	= m_pPlayer.pev.colormap;
+        pev.frags       = m_pPlayer.pev.frags;
+        self.m_FormattedName = m_pPlayer.pev.netname;
+        //设置好team
+        pev.team = m_pPlayer.pev.team;
+        //设置队伍
+        self.SetClassification(pev.team);
+    }
 
     void Touch(CBaseEntity@ pOther)
     {
         if(pOther.IsBSPModel())
             return;
         if(pOther.pev.classname == "trigger_hitbox")
+        {
+            //自动帮你按L,我好良心啊
+            pvpUtility::ClientCommand(m_pPlayer, "stuck");
             return;
+        } 
     }
 
     int Classify()
     {
-        return clClassify;
+        return pev.team;
     }
 
     //大概是真的死了
@@ -98,6 +116,7 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         m_pPlayer.pev.armorvalue = 0;
         m_pPlayer.pev.deadflag = DEAD_DYING;
         ++m_pPlayer.m_iDeaths;
+
         //别忘了摧毁这个Hitbox
         g_EntityFuncs.Remove(self);
     }
@@ -167,6 +186,7 @@ class trigger_hitbox : ScriptBaseMonsterEntity
             }
             //大概是真的死了
             doDeath(Take);
+            PostDeath(pevAttacker);
             //此时返回1
             return 1;
         }
@@ -189,10 +209,20 @@ class trigger_hitbox : ScriptBaseMonsterEntity
     void PostTakeDamage()
     {
         //遍历数组挨个执行
-        for(uint i = 0; i< pvpHitbox::preCallList.length(); i++)
+        for(uint i = 0; i< pvpHitbox::postCallList.length(); i++)
         {
             //执行类里的函数
             pvpHitbox::postCallList[i](m_pPlayer);
+        }
+    }
+
+    void PostDeath(entvars_t@ pevAttacker)
+    {
+        //遍历数组挨个执行
+        for(uint i = 0; i< pvpHitbox::deathCallList.length(); i++)
+        {
+            //执行类里的函数
+            pvpHitbox::deathCallList[i](m_pPlayer, pevAttacker);
         }
     }
 
@@ -206,6 +236,19 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         //才怪
         //if(pevAttacker is null)
         //    return 0;
+
+        //击中友军！重复一遍，击中友军！
+        if(pvpTeam::GetState())
+        {
+            if( g_EntityFuncs.Instance(pevAttacker).IsPlayer() || g_EntityFuncs.Instance(pevAttacker).IsMonster())
+            {
+                if(pevAttacker.team == pev.team && pevAttacker !is m_pPlayer.pev)
+                {
+                    pvpHitbox::FriendlyFire(m_pPlayer, pevAttacker);
+                    return 0;
+                }
+            }
+        }
 
         //先修改伤害信息
         //先获取属主血量护甲量
@@ -241,6 +284,15 @@ class trigger_hitbox : ScriptBaseMonsterEntity
         //直接结束，不call原来的
         flDamage = 0;//记得清空这个
         bitsDamageType = 0;
-        return 0;
+        return 1;
     }
+}
+
+//注册一个Hitbox
+void HitboxRegister()
+{
+    g_CustomEntityFuncs.RegisterCustomEntity( "CBaseHitbox", "trigger_hitbox" );
+	g_Game.PrecacheOther("trigger_hitbox");
+    g_Game.PrecacheModel( "sprites/" +  pvpHitbox::strPanic);
+    g_Game.PrecacheModel( "sprites/" +  pvpHitbox::strFriendly);
 }

@@ -6,7 +6,10 @@
 #include "core/Config"
 #include "core/Hitbox"
 #include "core/Hook"
+#include "core/Hud"
 #include "core/PlayerData"
+#include "core/Team"
+#include "core/Vote"
 #include "core/ClientCmd"
 #include "core/ClientSay"
 #include "core/Addon"
@@ -31,6 +34,8 @@ void PluginInit()
     pvpTimer::PluginInit();
     pvpPlayerData::PluginInit();
     pvpClientCmd::PluginInit();
+    pvpVote::PluginInit();
+    pvpTeam::PluginInit();
     pvpHitbox::PluginInit();
 
     pvpAddon::PluginInit();
@@ -53,6 +58,8 @@ void MapInit()
         return;
     //注册自定义monster
     pvpHitbox::MapInit();
+    //pvpHud::MapInit();
+    pvpTeam::MapInit();
     pvpAddon::MapInit();
 }
 

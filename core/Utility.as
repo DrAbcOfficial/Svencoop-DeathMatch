@@ -106,4 +106,81 @@ namespace pvpUtility
         max = 255/max;
         return RGBA(uint(rgb.r * max), uint(rgb.g * max), uint(rgb.b * max), 255);
     }
+
+    //是hitbox吗
+    bool isHitbox( CBaseEntity@ pEntity, CBaseEntity@ pOther )
+    {
+        return pOther.pev.classname == "trigger_hitbox" && pEntity.pev.owner is pOther.pev.owner;
+    }
+
+    //帮玩家执行一点小小的指令
+    void ClientCommand(CBasePlayer@ pPlayer, const string Arg)
+	{
+		NetworkMessage m(MSG_ONE, NetworkMessages::SVC_STUFFTEXT, pPlayer.edict());
+			m.WriteString(Arg);
+		m.End();
+	}
+
+    //该结束啦
+    void EndGame(float&in flTime = 0.01)
+    {
+        g_EngineFuncs.CVarSetFloat("mp_timelimit", flTime);
+    }
+
+    //重新开启游戏
+    void Restart(bool keepInventory = false, bool keepScore = false)
+    {
+        for (int i = 0; i <= g_Engine.maxClients; i++)
+		{
+			CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
+			if(pPlayer !is null && pPlayer.IsConnected())
+			{
+                g_PlayerFuncs.RespawnPlayer(pPlayer, true, true);
+                pPlayer.pev.health = 100;
+		        pPlayer.pev.armorvalue = 0;
+
+                if(!keepInventory)
+                {
+                    pPlayer.RemoveAllItems(false);
+		            pPlayer.SetItemPickupTimes(0);
+                    pPlayer.m_fLongJump = false;
+                }
+                if(!keepScore)
+                {
+                    pPlayer.pev.frags = 0;
+		            pPlayer.m_iDeaths = 0;
+                }
+            }
+        }
+    }
+
+    //所有人，打开菜单！
+    void OpenMenuAll(CTextMenu@&in pMenu, int&in page = 0, int&in item = 0)
+    {
+        for (int i = 0; i <= g_Engine.maxClients; i++)
+		{
+			CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
+			if(pPlayer !is null && pPlayer.IsConnected())
+			{
+                 pMenu.Open(page, item, pPlayer);
+            }
+        }
+    }
+
+    //HL式的发送消息
+    void SendHLHUDText(string&in str)
+    {
+        NetworkMessage message(MSG_BROADCAST, NetworkMessages::HudText, null);
+            message.WriteString(str);
+            message.WriteByte(2);
+        message.End();
+    }
+
+    //展示大大的HL标题，哇撒
+    void SendHLTitle()
+    {
+        NetworkMessage m(MSG_BROADCAST, NetworkMessages::GameTitle, null);
+            m.WriteByte(1);
+        m.End();
+    }
 }

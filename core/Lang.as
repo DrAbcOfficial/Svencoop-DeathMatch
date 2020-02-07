@@ -219,4 +219,30 @@ namespace pvpLang
         return sendQueryStr(name, key, langIndex).Replace("%1", r1).Replace("%2", r2).Replace("%3", r3).Replace("%4", r4);
     }
     //四个够了吧
+
+    //直接使用CBasePlayer的重载
+    string getLangStr(string&in name, string&in key, CBasePlayer@&in pPlayer)
+    {
+        return sendQueryStr(name, key, getPlayerLangIndex(pPlayer));
+    }
+
+    string getLangStr(string&in name, string&in key ,string&in r1 ,CBasePlayer@&in pPlayer)
+    {
+        return sendQueryStr(name, key, getPlayerLangIndex(pPlayer)).Replace("%1", r1);
+    }
+
+    string getLangStr(string&in name, string&in key ,string&in r1 ,string&in r2 ,CBasePlayer@&in pPlayer)
+    {
+        return sendQueryStr(name, key, getPlayerLangIndex(pPlayer)).Replace("%1", r1).Replace("%2", r2);
+    }
+
+    string getLangStr(string&in name, string&in key ,string&in r1 ,string&in r2 ,string&in r3, CBasePlayer@&in pPlayer)
+    {
+        return sendQueryStr(name, key, getPlayerLangIndex(pPlayer)).Replace("%1", r1).Replace("%2", r2).Replace("%3", r3);
+    }
+
+    string getLangStr(string&in name, string&in key ,string&in r1 ,string&in r2 ,string&in r3, string&in r4, CBasePlayer@&in pPlayer)
+    {
+        return sendQueryStr(name, key, getPlayerLangIndex(pPlayer)).Replace("%1", r1).Replace("%2", r2).Replace("%3", r3).Replace("%4", r4);
+    }
 }

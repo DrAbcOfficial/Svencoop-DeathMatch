@@ -111,6 +111,34 @@ namespace pvpLog
         }
     }
 
+    //向所有玩家推送消息
+    void say(string&in szString, int&in iPosition = POSCONSOLE)
+    {
+        for (int i = 0; i <= g_Engine.maxClients; i++)
+		{
+			CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
+			if(pPlayer !is null && pPlayer.IsConnected())
+			{
+                PrintToPlayer(pPlayer, szString, iPosition);
+            }
+        }
+    }
+    //推送多条消息
+    void say(array<string>&in ayString, int&in iPosition = POSCONSOLE)
+    {
+        for (int i = 0; i <= g_Engine.maxClients; i++)
+		{
+			CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
+			if(pPlayer !is null && pPlayer.IsConnected())
+			{
+                for(uint j = 0; j < ayString.length(); j++)
+                {
+                    PrintToPlayer(pPlayer, ayString[j], iPosition);
+                }
+            }
+        }
+    }
+
     void PrintToPlayer(CBasePlayer@pPlayer, string&in szString, int&in iPosition = POSCONSOLE)
     {
         string szBuffer = "[" + pvpConfig::getConfig("General","Title").getString() + "]" + szString + "\n";

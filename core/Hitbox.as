@@ -38,8 +38,12 @@ namespace pvpHitbox
     //@受害者
     funcdef void postDamageCallback(CBasePlayer@);
 
+    funcdef void deathCallBack(CBasePlayer@, entvars_t@);
+
     array<preDamageCallback@> preCallList = {};
     array<postDamageCallback@> postCallList = {};
+    array<deathCallBack@> deathCallList = {};
+
     //模型
     string strHitbox = "models/player.mdl";
     //是否显示模型
@@ -48,6 +52,10 @@ namespace pvpHitbox
     string strPanic;
     //伤害指示器频道
     uint8 uiPanicChannel = 15;
+    //友伤指示器spr
+    string strFriendly;
+    //友伤指示器频道
+    uint8 uiFriendlyChannel = 14;
     //玩家RGBA数据库
     dictionary dicPlayerColor;
 
@@ -58,6 +66,10 @@ namespace pvpHitbox
         strPanic = pvpConfig::getConfig("Hitbox","PanicSpr").getString();
         bShowHitbox = pvpConfig::getConfig("Hitbox","Show").getBool();
         uiPanicChannel = uint8(pvpConfig::getConfig("Hitbox","PanicChannel").getInt());
+
+        strFriendly = pvpConfig::getConfig("Hitbox","FriendlySpr").getString();
+        uiFriendlyChannel = uint8(pvpConfig::getConfig("Hitbox","FriendlyChanel").getInt());
+        
         //显示hitbox
         pvpClientCmd::RegistCommand("admin_showhitbox","Show hitbox or not","Hitbox",@pvpHitbox::ChangeShowCall, CCMD_ADMIN);
         //改变伤害指示器颜色
@@ -66,16 +78,12 @@ namespace pvpHitbox
 
     void MapInit()
     {
-        g_CustomEntityFuncs.RegisterCustomEntity( "trigger_hitbox", "trigger_hitbox" );
-		g_Game.PrecacheOther("trigger_hitbox");
-        g_Game.PrecacheModel( "sprites/" +  strPanic);
+        HitboxRegister();
     }
 
     void playerSpawn( CBasePlayer@ pPlayer )
 	{
-		CBaseEntity@ pEntity = g_EntityFuncs.Create( "trigger_hitbox", pPlayer.pev.origin, pPlayer.pev.angles, true, pPlayer.edict());
-        pEntity.pev.targetname = pvpUtility::getSteamId(pPlayer);
-        g_EntityFuncs.DispatchSpawn( pEntity.edict() );
+		CreateHitbox(pPlayer);
 	}
 
     void RemoveHitbox(CBasePlayer@ pPlayer)
@@ -96,16 +104,15 @@ namespace pvpHitbox
     void PanicColorCall(const CCommand@ pArgs)
     {
         CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
-        int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
         if(pArgs.ArgC() < 4)
         {
-            pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "AVACMD", pIndex));
+            pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "AVACMD", pPlayer));
             pvpLog::say(pPlayer, ".player_paniccolor <Red> <Green> <Blue>");
             pvpLog::say(pPlayer, "Example: player_paniccolor 255 0 123");
             return;
         }
         dicPlayerColor[pvpUtility::getSteamId(pPlayer)] = pvpUtility::preProcessColor(RGBA(atoui(pArgs[1]), atoui(pArgs[2]), atoui(pArgs[3]), 255));
-        pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pIndex));
+        pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pPlayer));
     }
 
     void doCommand()
@@ -131,13 +138,12 @@ namespace pvpHitbox
     void ChangeShowCall(const CCommand@ pArgs)
 	{
         CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
-        int pIndex = pvpLang::getPlayerLangIndex(pPlayer);
         int tempInt = 0;
         if(pArgs.ArgC() == 1)
         {
             bShowHitbox = !bShowHitbox;
             doCommand();
-            pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDTLG", pIndex));
+            pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDTLG", pPlayer));
             return;
         }
         string tempStr = pArgs[1].ToUppercase();
@@ -145,8 +151,8 @@ namespace pvpHitbox
         tempInt = Math.clamp(0 ,1, atoi(tempStr));
         switch(tempInt)
         {
-            case 0: bShowHitbox = false;pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDOFF", pIndex));break;
-            case 1: bShowHitbox = true; pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pIndex));break;
+            case 0: bShowHitbox = false;pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDOFF", pPlayer));break;
+            case 1: bShowHitbox = true; pvpLog::say(pPlayer, pvpLang::getLangStr("_CLIENTCMD_", "CMDON", pPlayer));break;
         }
         doCommand();
 	}
@@ -323,6 +329,27 @@ namespace pvpHitbox
         g_PlayerFuncs.HudCustomSprite(pPlayer, params);
     }
 
+    //我他妈血流满地啊
+    void FriendlyFire(CBasePlayer@ vPlayer, entvars_t@ pevAttacker)
+    {
+        CBasePlayer@ pPlayer = cast<CBasePlayer@>(g_EntityFuncs.Instance(pevAttacker));
+        //不是玩家你看你🐎呢？
+        if(pPlayer.IsPlayer() && pPlayer.IsNetClient())
+        {
+            HUDSpriteParams params;
+                params.channel = uiFriendlyChannel;
+                params.flags = HUD_ELEM_DEFAULT_ALPHA | HUD_ELEM_SCR_CENTER_X | HUD_ELEM_SCR_CENTER_Y;
+                params.x = 0;
+                params.y = 0;
+                params.spritename = strFriendly;
+                string steamId = pvpUtility::getSteamId(pPlayer);
+                params.color1 = dicPlayerColor.exists(steamId) ? RGBA(dicPlayerColor[steamId]) : RGBA_GREEN;
+                params.holdTime = 1;
+                params.fadeoutTime = 0.1;
+            g_PlayerFuncs.HudCustomSprite(pPlayer, params);
+        }
+    }
+
     //这些都是写死的静态的东西，大概这样能少点内存占用？
     //他杀
     string doKillFeed(CBaseEntity@ pAttacker , CBaseEntity@ pInflictor ,int&in index)
@@ -361,5 +388,22 @@ namespace pvpHitbox
         int index = int(pvpUtility::getLog(bitsDamageType,2));
         string szReturn = pvpLang::getLangStr("_HITBOX_","DAC" + index + Math.RandomLong(0,1), string(m_pPlayer.pev.netname), pIndex);
         return szReturn.IsEmpty() ? pvpLang::getLangStr("_HITBOX_","DACA" + Math.RandomLong(0,1), string(m_pPlayer.pev.netname), pIndex) : szReturn;
+    }
+
+    //创建一个Hitbox方法
+    CBaseHitbox@ CreateHitbox( CBasePlayer@ pPlayer)
+    {
+        CBaseEntity@ preEntity = g_EntityFuncs.Create( "trigger_hitbox", pPlayer.pev.origin, pPlayer.pev.angles, true, pPlayer.edict());
+        CBaseHitbox@ pHitbox = cast<CBaseHitbox@>(CastToScriptClass(preEntity));
+        pHitbox.pev.targetname = pvpUtility::getSteamId(pPlayer);
+        g_EntityFuncs.DispatchSpawn( preEntity.edict() );
+        return pHitbox;
+    }
+
+    //获得玩家的hitbox
+    CBaseHitbox@ GetHitBox(CBasePlayer@&in pPlayer)
+    {
+        CBaseEntity@ preEntity = g_EntityFuncs.FindEntityByTargetname(preEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)));
+        return cast<CBaseHitbox@>(CastToScriptClass(preEntity));
     }
 }
