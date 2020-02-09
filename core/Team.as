@@ -106,25 +106,13 @@ namespace pvpTeam
         }
     }
 
-    bool bTDMState = false;
     array<CTeam@> aryTeams;
-    CTextMenu@ TeamMenu = CTextMenu(TeamMenuRespond);
-    CScheduledFunction@ TeamColor = null;
+    CTextMenu@ TeamMenu;
     int iIconState = 0;
 
     void PluginInit()
     {
-        pvpLang::addLang("_TEAM_","Team");
-        pvpClientCmd::RegistCommand("vote_tdm","Start Team Death Match","Team", @pvpTeam::VoteCallback);
-        pvpClientCmd::RegistCommand("player_team","Change Your Team in Team Death Match","Team", @pvpTeam::TeamCallBack);
-        pvpClientCmd::RegistCommand("admin_tdm","Admin Start Team Death Match","Team", @pvpTeam::AdminCallBack, CCMD_ADMIN);
         pvpClientCmd::RegistCommand("admin_showtdmicon","Admin Show everyone's icon","Team", @pvpTeam::AdminIconCallBack, CCMD_ADMIN);
-
-        AddTeam("Lambda", RGBA(255,165,0,255), CLASS_PLAYER, pvpConfig::getConfig("Team","OrangeSpr").getString());
-        AddTeam("HECU", RGBA(0,255,0,255), CLASS_HUMAN_MILITARY, pvpConfig::getConfig("Team","GreenSpr").getString());
-        AddTeam("XEN", RGBA(255,0,0,255), CLASS_ALIEN_MILITARY, pvpConfig::getConfig("Team","RedSpr").getString());
-        AddTeam("X-Race", RGBA(0,0,255,255), CLASS_XRACE_SHOCK, pvpConfig::getConfig("Team","BlueSpr").getString());
-
         pvpHud::CreateTextHUD(
             pvpConfig::getConfig("Team","HUDName").getString(),
             "",
@@ -133,10 +121,7 @@ namespace pvpTeam
             pvpConfig::getConfig("Team","HUDChannel").getInt(),
             pvpConfig::getConfig("Team","HUDHold").getFloat()
         );
-
-        RegistTeamMenu();
-
-        pvpHitbox::deathCallList.insertLast(@PlayerDeath);
+        pvpTimer::addTimer(pvpTimer::CTimerFunc("TeamIcon", @SendTeamTimer));
     }
 
     void MapInit()
@@ -144,8 +129,7 @@ namespace pvpTeam
         for(uint i = 0; i < aryTeams.length();i++)
         {
             g_Game.PrecacheModel(aryTeams[i].Spr);
-        }
-        
+        } 
     }
 
     void PlayerSpawn(CBasePlayer@ pPlayer)
@@ -158,50 +142,22 @@ namespace pvpTeam
 
     void PlayerDeath(CBasePlayer@ pPlayer, entvars_t@ pevAttacker)
     {
-        if(!bTDMState)
-            return;
-
-        CTeam@ pTeam = GetPlayerTeam(pPlayer);
-        if(pTeam is null)
-            TeamMenu.Open(0, 0, pPlayer);
-
         CBasePlayer@ pAttacker = cast<CBasePlayer@>(g_EntityFuncs.Instance(pevAttacker));
-        @pTeam = GetPlayerTeam(pAttacker);
+        CTeam@ pTeam = GetPlayerTeam(pAttacker);
         if(pTeam !is null)
             pTeam.AddScore();
     }
 
-    bool GetState()
+    void ClientDisconnect(CBasePlayer@ pPlayer)
     {
-        return bTDMState;
+        CTeam@ pTeam = GetPlayerTeam(pPlayer);
+        if(pTeam !is null)
+            pTeam.Remove(pPlayer);
     }
-
-    void AdminCallBack(const CCommand@ Argments)
-	{
-		StartTeam(null, false, 0);
-	}
 
     void AdminIconCallBack(const CCommand@ Argments)
 	{
 		iIconState = atoi(Argments[1]);
-	}
-
-    void VoteCallback(const CCommand@ Argments)
-	{
-		CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
-		CPVPVote@ pVote = pvpVote::CreatVote(pvpLang::getLangStr("_TEAM_", "VOTENAME"), 
-            pvpLang::getLangStr("_TEAM_", "VOTEDES",  pvpLang::getLangStr("_TEAM_", bTDMState ? "DISABLE" : "ENABLE")), pPlayer);
-        if(pVote is null)
-            return;
-        pVote.setCallBack(@StartTeam);
-        pVote.Start();
-	}
-
-    void TeamCallBack(const CCommand@ Argments)
-	{
-		CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
-		if(bTDMState)
-            TeamMenu.Open(0,0,pPlayer);
 	}
 
     void RemoveTeam(string&in _Name)
@@ -217,16 +173,20 @@ namespace pvpTeam
         }
     }
 
-    void RegistTeamMenu()
+    void RegistTeamMenu(string&in Title)
     {
-        TeamMenu.SetTitle("[" + pvpLang::getLangStr("_TEAM_", "MENUTITLE") + "]\n");
+        if(TeamMenu !is null)
+            TeamMenu.Unregister();
+        CTextMenu@ tempMenu = CTextMenu(TeamMenuRespond);
+        tempMenu.SetTitle("[" + Title + "]\n");
         for(uint i = 0; i < aryTeams.length();i++)
         {
             if(!aryTeams[i].IsFree())
-                TeamMenu.AddItem(aryTeams[i].Name, null);
+                tempMenu.AddItem(aryTeams[i].Name, null);
         }
-        TeamMenu.AddItem("<Cancel>", null);
-        TeamMenu.Register();
+        tempMenu.AddItem("<Cancel>", null);
+        tempMenu.Register();
+        @TeamMenu = @tempMenu;
     }
 
     void AddTeam(string&in _Name, RGBA&in _Color, int&in _Class, string&in _Spr)
@@ -295,49 +255,24 @@ namespace pvpTeam
                 if(GetPlayerTeam(pPlayer) is null)
                 {
                     mMenu.Open(0, 0, pPlayer);
-                    pvpLog::say(pPlayer, pvpLang::getLangStr("_TEAM_", "HASTOCHOSE", pPlayer), POSCHAT);
+                    pvpLog::say(pPlayer, pvpLang::getLangStr("_MAIN_", "HASTOCHOSE", pPlayer), POSCHAT);
                 }
 			}
 			else
             {
                 CTeam@ pTeam = GetTeamByName(mItem.m_szName);
                 pTeam.Add(pPlayer);
-                pvpLog::say(pPlayer, pvpLang::getLangStr("_TEAM_", "JOINEDTEAM", mItem.m_szName, pPlayer), POSCHAT);
+                pvpLog::say(pPlayer, pvpLang::getLangStr("_MAIN_", "JOINEDTEAM", mItem.m_szName, pPlayer), POSCHAT);
             }
 		}
 	}
 
-    void StartTeam( CPVPVote@ pVote, bool bResult, int iVoters )
-    {
-        bTDMState = !bTDMState;
-        if(bTDMState)
-        {
-            pvpUtility::Restart();
-            pvpUtility::SendHLHUDText("Team Death Match");
-            pvpUtility::SendHLTitle();
-            pvpUtility::OpenMenuAll(TeamMenu);
-            @TeamColor = g_Scheduler.SetInterval( "SendTeamTimer", 1, g_Scheduler.REPEAT_INFINITE_TIMES );
-        }
-        else
-        {
-            pvpUtility::SendHLHUDText("Team Death Match Disabled");
-            array<string> tempStr = {pvpLang::getLangStr("_TEAM_", "SCOREREPORT")};
-            for(uint i = 0 ; i < aryTeams.length();i++)
-            {
-                tempStr.insertLast(aryTeams[i].Name + "\t:\t" + aryTeams[i].Score + (i == aryTeams.length() - 1 ? "" : "\n"));
-            }
-            pvpLog::log( tempStr);
-            ClearAllTeam();
-            g_Scheduler.RemoveTimer(TeamColor);
-            @TeamColor = null;
-        }
-        
-    }
-
-
     //头上有标的都是队友
-    void SendTeamTimer()
+    bool SendTeamTimer()
     {
+        if(pvpGameMode::GetMode().Team != MODE_TEAM)
+            return true;
+
         string tempStr = "";
         for(uint i = 0; i < aryTeams.length(); i++)
         {
@@ -363,7 +298,7 @@ namespace pvpTeam
                 if( pTeam is null)
                     continue;
                 if(iIconState == ICON_HIDE)
-                    return;
+                    return true;
 
                 for (int j = 0; j <= g_Engine.maxClients; j++)
                 {
@@ -389,5 +324,6 @@ namespace pvpTeam
                 }
             }
         }
+        return true;
     }
 }

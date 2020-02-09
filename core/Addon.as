@@ -1,5 +1,7 @@
 #include "../addon/SayReplace"
 #include "../addon/ClassicWeapon"
+#include "../addon/Autobhop"
+#include "../addon/TeamDeathMatch"
 
 enum moduleCallType
 {
@@ -13,6 +15,8 @@ void RegistAddonModule()
     //在这里注册
     pvpAddon::RegisteModule( "Say Replacement", "Replace keyword to something" ,"Dr.Abc", @Sayreplace::PluginInit);
     pvpAddon::RegisteModule( "Classic Weapons", "HL weapons, wow!" ,"Dr.Abc", @ClassiscWeapon::PluginInit, @ClassiscWeapon::MapInit, @ClassiscWeapon::MapActivate);
+    pvpAddon::RegisteModule( "Auto Bhop", "Enable auto bhop" ,"Null", @Autobhop::PluginInit);
+    pvpAddon::RegisteModule( "Team Death Match", "Enable Team Death Match" ,"Dr.Abc", @TeamDeathMatch::PluginInit);
 }
 
 namespace pvpAddon

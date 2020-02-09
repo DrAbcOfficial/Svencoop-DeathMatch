@@ -2,10 +2,10 @@ namespace pvpTimer
 {
     funcdef bool timerCallback();
     //timer类
-    class pvpTimerFunc
+    class CTimerFunc
     {
         //提供构造函数方便创建类
-	    pvpTimerFunc(string _uniName, timerCallback@ _callBack ) 
+	    CTimerFunc(string _uniName, timerCallback@ _callBack ) 
         {
             uniName = _uniName; 
             @callBack = @_callBack;
@@ -24,7 +24,7 @@ namespace pvpTimer
     //一秒一次
     int8 timeStep = 1;
     //需要执行函数的数组，1为成功执行，0为失败
-    array<pvpTimerFunc@> funcArray = {};
+    array<CTimerFunc@> funcArray = {};
     //计时器
     CScheduledFunction@ pTimer;
     void PluginInit()
@@ -61,13 +61,13 @@ namespace pvpTimer
         }
     }
 
-    void addTimer(pvpTimerFunc@ data)
+    void addTimer(CTimerFunc@ data)
     {
         //添加函数到数组内
         funcArray.insertLast(data);
     }
 
-    void setTimer(string&in replaceName, pvpTimerFunc@ data)
+    void setTimer(string&in replaceName, CTimerFunc@ data)
     {
         //替换函数
         for(uint i = 0; i< funcArray.length();i++)

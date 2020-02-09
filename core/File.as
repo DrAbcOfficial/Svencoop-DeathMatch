@@ -156,49 +156,18 @@ namespace pvpFile
     dictionary AddDicData(dictionary&in dic, string&in key,string&in sz)
     {
         sz.Trim();
-        //实数
-        Regex::Regex@ pRegex = Regex::Regex("^(-?\\d+)(\\.\\d+)?$");
-        //整数
-        Regex::Regex@ fRegex = Regex::Regex("^-?[1-9]\\d*$");
-        //向量
-        Regex::Regex@ vRegex = Regex::Regex("^(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?$");
-        //二维向量
-        Regex::Regex@ v2Regex = Regex::Regex("^(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?$");
-        //颜色
-        Regex::Regex@ cRegex = Regex::Regex("^(-?\\d+)?,(-?\\d+)?,(-?\\d+)?,(-?\\d+)?$");
-        //布尔型
-        string temp = sz;
-        if(sz.ToLowercase() == "true")
-            dic.set(key,CINIValue(true));
-        else if(sz.ToLowercase() == "false")
-            dic.set(key,CINIValue(false));
-        //实数型
-        else if(Regex::Match(temp, @pRegex))
-            dic.set(key,CINIValue(atof(temp)));
-        //整数型
-        else if(Regex::Match(temp, @fRegex))
-            dic.set(key,CINIValue(atoi(temp)));
-        //二维向量型
-        else if(Regex::Match(temp, @v2Regex))
+        array<string> tempAry;
+        switch(pvpUtility::getStringType(sz))
         {
-            array<string> tempAry = temp.Split(",");
-            dic.set(key,CINIValue(tempAry[0], tempAry[1]));
-        }  
-        //向量型
-        else if(Regex::Match(temp, @vRegex))
-        {
-            array<string> tempAry = temp.Split(",");
-            dic.set(key,CINIValue(tempAry[0], tempAry[1], tempAry[2]));
-        }  
-        //颜色型
-        else if(Regex::Match(temp, @cRegex))
-        {
-            array<string> tempAry = temp.Split(",");
-            dic.set(key,CINIValue(tempAry[0], tempAry[1], tempAry[2], tempAry[3]));
-        } 
-        //字符串
-        else
-            dic.set(key,CINIValue(temp));
+            case PDATA_BOOL:dic.set(key,CINIValue(sz.ToLowercase() == "true" ? true : false));break;
+            case PDATA_INT:dic.set(key,CINIValue(atoi(sz)));break;
+            case PDATA_FLOAT:dic.set(key,CINIValue(atof(sz)));break;
+            case PDATA_VECTOR2D: tempAry = sz.Split(","); dic.set(key,CINIValue(tempAry[0], tempAry[1]));break;
+            case PDATA_VECTOR: tempAry = sz.Split(","); dic.set(key,CINIValue(tempAry[0], tempAry[1], tempAry[2]));break;
+            case PDATA_RGBA: tempAry = sz.Split(",");dic.set(key,CINIValue(tempAry[0], tempAry[1], tempAry[2], tempAry[3]));break;
+            case PDATA_STRING:dic.set(key,CINIValue(sz));break;
+            default:dic.set(key,CINIValue(sz));break;
+        }
         return dic;
     }
 

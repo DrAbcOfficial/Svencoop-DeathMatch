@@ -12,6 +12,9 @@
 #include "core/Vote"
 #include "core/ClientCmd"
 #include "core/ClientSay"
+#include "core/EndGame"
+#include "core/GameMode"
+#include "core/TimerStop"
 #include "core/Addon"
 
 bool LoadFlag = false;
@@ -21,23 +24,27 @@ void PluginInit()
     g_Module.ScriptInfo.SetAuthor("Dr.Abc");
 	g_Module.ScriptInfo.SetContactInfo("NahNah");
 
+    //非常重
     LoadFlag = pvpConfig::PluginInit();
     //配置文件不对，小伙子
     if(!LoadFlag)
     {
-        pvpLog::log("Config data broken! Plugin won't work", 2);
+        pvpLog::log("Config data broken! Plugin won't work", SYSERROR);
         return;
     }
-    
+    //重中之重
     pvpLang::PluginInit();
     pvpHook::PluginInit();
+    pvpHitbox::PluginInit();
+    pvpGameMode::PluginInit();
+    //不那么重
     pvpTimer::PluginInit();
     pvpPlayerData::PluginInit();
     pvpClientCmd::PluginInit();
     pvpVote::PluginInit();
     pvpTeam::PluginInit();
-    pvpHitbox::PluginInit();
-
+    pvpTimerStop::PluginInit();
+    //完全没影响
     pvpAddon::PluginInit();
     //全部载入完毕啦！赶紧打印个消息爽爽！
     pvpLog::log("""
@@ -56,9 +63,9 @@ void MapInit()
 {
     if(!LoadFlag)
         return;
+
     //注册自定义monster
     pvpHitbox::MapInit();
-    //pvpHud::MapInit();
     pvpTeam::MapInit();
     pvpAddon::MapInit();
 }

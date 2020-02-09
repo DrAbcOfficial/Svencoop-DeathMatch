@@ -1,5 +1,45 @@
 namespace pvpUtility
 {
+    //注册一个大家都能用的不带参数的FuncDef
+    funcdef void VoidFuncCall();
+    //获取字符串类型
+    int getStringType(string&in sz)
+    {
+        sz.Trim();
+        //实数
+        Regex::Regex@ pRegex = Regex::Regex("^(-?\\d+)(\\.\\d+)?$");
+        //整数
+        Regex::Regex@ fRegex = Regex::Regex("^-?[1-9]\\d*$");
+        //向量
+        Regex::Regex@ vRegex = Regex::Regex("^(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?$");
+        //二维向量
+        Regex::Regex@ v2Regex = Regex::Regex("^(-?\\d+)(\\.\\d+)?,(-?\\d+)(\\.\\d+)?$");
+        //颜色
+        Regex::Regex@ cRegex = Regex::Regex("^(-?\\d+)?,(-?\\d+)?,(-?\\d+)?,(-?\\d+)?$");
+        //布尔型
+        string temp = sz;
+        if(sz.ToLowercase() == "true" || sz.ToLowercase() == "false")
+            return PDATA_BOOL;
+        //整数型
+        else if(Regex::Match(temp, @fRegex))
+            return PDATA_INT;
+        //实数型
+        else if(Regex::Match(temp, @pRegex))
+            return PDATA_FLOAT;
+        //二维向量型
+        else if(Regex::Match(temp, @v2Regex))
+            return PDATA_VECTOR2D;
+        //向量型
+        else if(Regex::Match(temp, @vRegex))
+            return PDATA_VECTOR;
+        //颜色型
+        else if(Regex::Match(temp, @cRegex))
+            return PDATA_RGBA;
+        //字符串
+        else
+            return PDATA_STRING;
+    }
+    
     //取对数
     float getLog(float&in natural, float &in base = 10)
     {
@@ -22,6 +62,12 @@ namespace pvpUtility
         DateTime time;
         time.Format(szCurrentTime, szFormat );
         return szCurrentTime;
+    }
+
+    //获取地图名
+    string getMapName()
+    {
+        return string(g_Engine.mapname).ToLowercase();
     }
 
     /**
@@ -120,39 +166,6 @@ namespace pvpUtility
 			m.WriteString(Arg);
 		m.End();
 	}
-
-    //该结束啦
-    void EndGame(float&in flTime = 0.01)
-    {
-        g_EngineFuncs.CVarSetFloat("mp_timelimit", flTime);
-    }
-
-    //重新开启游戏
-    void Restart(bool keepInventory = false, bool keepScore = false)
-    {
-        for (int i = 0; i <= g_Engine.maxClients; i++)
-		{
-			CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
-			if(pPlayer !is null && pPlayer.IsConnected())
-			{
-                g_PlayerFuncs.RespawnPlayer(pPlayer, true, true);
-                pPlayer.pev.health = 100;
-		        pPlayer.pev.armorvalue = 0;
-
-                if(!keepInventory)
-                {
-                    pPlayer.RemoveAllItems(false);
-		            pPlayer.SetItemPickupTimes(0);
-                    pPlayer.m_fLongJump = false;
-                }
-                if(!keepScore)
-                {
-                    pPlayer.pev.frags = 0;
-		            pPlayer.m_iDeaths = 0;
-                }
-            }
-        }
-    }
 
     //所有人，打开菜单！
     void OpenMenuAll(CTextMenu@&in pMenu, int&in page = 0, int&in item = 0)

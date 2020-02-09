@@ -14,6 +14,7 @@ namespace pvpHook
     HookReturnCode ClientDisconnect(CBasePlayer@ pPlayer )
     {
         pvpHitbox::RemoveHitbox(pPlayer);
+        pvpTeam::ClientDisconnect(pPlayer);
         return HOOK_HANDLED;
     }
 

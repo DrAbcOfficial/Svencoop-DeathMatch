@@ -1,4 +1,4 @@
-#include "../Entity/core/trigger_hitbox"
+#include "../Entity/core/CBaseHitbox"
 
 enum DEADTYPE
 {
@@ -39,10 +39,6 @@ namespace pvpHitbox
     funcdef void postDamageCallback(CBasePlayer@);
 
     funcdef void deathCallBack(CBasePlayer@, entvars_t@);
-
-    array<preDamageCallback@> preCallList = {};
-    array<postDamageCallback@> postCallList = {};
-    array<deathCallBack@> deathCallList = {};
 
     //模型
     string strHitbox = "models/player.mdl";
@@ -406,4 +402,145 @@ namespace pvpHitbox
         CBaseEntity@ preEntity = g_EntityFuncs.FindEntityByTargetname(preEntity, pvpUtility::getSteamId(cast<CBasePlayer@>(pPlayer)));
         return cast<CBaseHitbox@>(CastToScriptClass(preEntity));
     }
+ 
+    //伤害前hook
+    array<preDamageCallback@> preCallList = {};
+    bool PreTakeDamage(CBasePlayer@pPlayer, entvars_t@ pevAttacker, float flDamage, int bitsDamageType)
+    {
+        bool bFlag = true;
+        //遍历数组挨个执行
+        for(uint i = 0; i< pvpHitbox::preCallList.length(); i++)
+        {
+            //执行类里的函数,只要有false，那就阻断
+            bFlag = bFlag && pvpHitbox::preCallList[i](pPlayer, pevAttacker, flDamage, bitsDamageType);
+        }
+        return bFlag;
+    }
+
+    void addPreTakeDamage(preDamageCallback@ data)
+    {
+        //添加函数到数组内
+        preCallList.insertLast(data);
+    }
+
+    void setPreTakeDamage(preDamageCallback@ data1, preDamageCallback@ data2)
+    {
+        //替换函数
+        for(uint i = 0; i< preCallList.length();i++)
+        {
+            if(preCallList[i] is data1)
+            {
+                preCallList.removeAt(i);
+                preCallList.insertAt(i, data2);
+                return;
+            }
+        }
+    }
+
+    void delPreTakeDamage(preDamageCallback@ data)
+    {
+        //字符串查找数组内函数
+        for(uint i = 0; i < preCallList.length(); i++ )
+        {
+            if(preCallList[i] is data)
+            {
+                //是这个了，删掉
+                preCallList.removeAt(i);
+                return;
+            }
+        }
+    }
+
+    //伤害后hook
+    array<postDamageCallback@> postCallList = {};
+    void PostTakeDamage(CBasePlayer@pPlayer)
+    {
+        //遍历数组挨个执行
+        for(uint i = 0; i< pvpHitbox::postCallList.length(); i++)
+        {
+            //执行类里的函数
+            pvpHitbox::postCallList[i](pPlayer);
+        }
+    }
+
+    void addPostTakeDamage(postDamageCallback@ data)
+    {
+        //添加函数到数组内
+        postCallList.insertLast(data);
+    }
+
+    void setPostTakeDamage(postDamageCallback@ data1, postDamageCallback@ data2)
+    {
+        //替换函数
+        for(uint i = 0; i< postCallList.length();i++)
+        {
+            if(postCallList[i] is data1)
+            {
+                postCallList.removeAt(i);
+                postCallList.insertAt(i, data2);
+                return;
+            }
+        }
+    }
+
+    void delPostTakeDamage(postDamageCallback@ data)
+    {
+        //字符串查找数组内函数
+        for(uint i = 0; i < postCallList.length(); i++ )
+        {
+            if(postCallList[i] is data)
+            {
+                //是这个了，删掉
+                postCallList.removeAt(i);
+                return;
+            }
+        }
+    }
+
+    //死亡后hook
+    array<deathCallBack@> deathCallList = {};
+    void PostDeath(CBasePlayer@pPlayer, entvars_t@ pevAttacker)
+    {
+        //遍历数组挨个执行
+        for(uint i = 0; i< pvpHitbox::deathCallList.length(); i++)
+        {
+            //执行类里的函数
+            pvpHitbox::deathCallList[i](pPlayer, pevAttacker);
+        }
+    }
+
+    void addPostDeath(deathCallBack@ data)
+    {
+        //添加函数到数组内
+        deathCallList.insertLast(data);
+    }
+
+    void setPostDeath(deathCallBack@ data1, deathCallBack@ data2)
+    {
+        //替换函数
+        for(uint i = 0; i< deathCallList.length();i++)
+        {
+            if(deathCallList[i] is data1)
+            {
+                deathCallList.removeAt(i);
+                deathCallList.insertAt(i, data2);
+                return;
+            }
+        }
+    }
+
+    void delPostDeath(deathCallBack@ data1)
+    {
+        //字符串查找数组内函数
+        for(uint i = 0; i < deathCallList.length(); i++ )
+        {
+            if(deathCallList[i] is data1)
+            {
+                //是这个了，删掉
+                deathCallList.removeAt(i);
+                return;
+            }
+        }
+    }
+
 }
