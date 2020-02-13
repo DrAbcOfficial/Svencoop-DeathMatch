@@ -188,6 +188,12 @@ namespace pvpHud
             }
         }
 
+        void SetValue(float fl)
+        {
+            Value = fl;
+            HUD.value = fl;
+        }
+
         void SetDigits(uint8&in defdigits, uint8&in maxdigits)
         {
             HUD.defdigits = defdigits;

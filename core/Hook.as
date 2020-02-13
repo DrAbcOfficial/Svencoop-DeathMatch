@@ -29,6 +29,7 @@ namespace pvpHook
     {
         pvpHitbox::playerSpawn(pPlayer);
         ClassiscWeapon::PlayerSpwan(pPlayer);
+        CS::PlayerSpawn(pPlayer);
         return HOOK_HANDLED;
     }
 
@@ -54,6 +55,8 @@ namespace pvpHook
         pvpPlayerData::PlayerPutinServer(pPlayer);
         pvpLang::PlayerPutinServer(pPlayer);
         ClassiscWeapon::PlayerPutinServer(pPlayer);
+        CS::PlayerPutinServer(pPlayer);
+        
         return HOOK_HANDLED;
     }
 

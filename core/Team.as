@@ -13,10 +13,11 @@ namespace pvpTeam
         RGBA Color;
         int Class;
         int Score;
-        private bool Free;
+        int TeamScore;
+        private bool Free = false;
         array<CBasePlayer@> List;
 
-        CTeam(string&in _Name, RGBA&in _Color, int&in _Class, string&in _Spr)
+        CTeam(string _Name, RGBA _Color, int _Class, string _Spr)
         {
             Name = _Name;
             Color = _Color;
@@ -45,20 +46,27 @@ namespace pvpTeam
             this.Score += i;
         }
 
-        void Add(CBasePlayer@&in pPlayer)
+        void AddTeamScore(int i = 1)
+        {
+            this.TeamScore += i;
+        }
+
+        void Add(CBasePlayer@ pPlayer)
         {
             CTeam@ oTeam = pvpTeam::GetPlayerTeam(pPlayer);
             if(oTeam !is null)
                 oTeam.Remove(pPlayer);
             this.List.insertLast(pPlayer);
             pPlayer.pev.team = this.Class;
+            pPlayer.pev.targetname = this.Name;
             pPlayer.SetClassification(this.Class);
+            pvpLog::log(pPlayer.pev.targetname);
             CBaseHitbox@ pHitbox = pvpHitbox::GetHitBox(cast<CBasePlayer@>(pPlayer));
             if(pHitbox !is null)
                 pHitbox.Update();
         }
 
-        bool Remove(CBasePlayer@&in pPlayer)
+        bool Remove(CBasePlayer@ pPlayer)
         {
             for(uint i = 0; i < this.Count; i++)
             {
@@ -66,6 +74,7 @@ namespace pvpTeam
                 {
                     this.List.removeAt(i);
                     pPlayer.pev.team = 0;
+                    pPlayer.pev.targetname = "";
                     pPlayer.SetClassification(CLASS_PLAYER);
                     return true;
                 }
@@ -78,6 +87,7 @@ namespace pvpTeam
             for(uint i = 0; i < this.Count; i++)
             {
                 this.List[i].pev.team = 0;
+                this.List[i].pev.targetname = "";
                 this.List[i].SetClassification(CLASS_PLAYER);
                 pvpHitbox::GetHitBox(this.List[i]).Update();
             }
@@ -95,7 +105,7 @@ namespace pvpTeam
             this.Free = true;
         }
 
-        bool Exist(CBasePlayer@&in pPlayer)
+        bool Exist(CBasePlayer@ pPlayer)
         {
             for(uint i = 0; i < this.Count; i++)
             {
@@ -113,7 +123,8 @@ namespace pvpTeam
     void PluginInit()
     {
         pvpClientCmd::RegistCommand("admin_showtdmicon","Admin Show everyone's icon","Team", @pvpTeam::AdminIconCallBack, CCMD_ADMIN);
-        pvpHud::CreateTextHUD(
+        pvpHud::CreateTextHUD
+        (
             pvpConfig::getConfig("Team","HUDName").getString(),
             "",
             RGBA(0,0,0,0),
@@ -138,6 +149,7 @@ namespace pvpTeam
         if(pTeam is null)
             return;
         pPlayer.pev.team = pTeam.Class;
+        pPlayer.pev.targetname = pTeam.Name;
     }
 
     void PlayerDeath(CBasePlayer@ pPlayer, entvars_t@ pevAttacker)
@@ -160,7 +172,17 @@ namespace pvpTeam
 		iIconState = atoi(Argments[1]);
 	}
 
-    void RemoveTeam(string&in _Name)
+    void RemoveTeam()
+    {
+        pvpLog::log(aryTeams.length());
+        for(uint i = 0; i < aryTeams.length(); i++)
+        {
+            aryTeams[i].Destory();
+        }
+        aryTeams = {};
+    }
+
+    void RemoveTeam(string _Name)
     {
         for(uint i = 0; i < aryTeams.length(); i++)
         {
@@ -173,7 +195,7 @@ namespace pvpTeam
         }
     }
 
-    void RegistTeamMenu(string&in Title)
+    void RegistTeamMenu(string Title)
     {
         if(TeamMenu !is null)
             TeamMenu.Unregister();
@@ -189,7 +211,7 @@ namespace pvpTeam
         @TeamMenu = @tempMenu;
     }
 
-    void AddTeam(string&in _Name, RGBA&in _Color, int&in _Class, string&in _Spr)
+    void AddTeam(string _Name, RGBA _Color, int _Class, string _Spr)
     {
         for(uint i = 0; i < aryTeams.length();i++)
         {
@@ -199,13 +221,19 @@ namespace pvpTeam
                 aryTeams[i].Color = _Color;
                 aryTeams[i].Class = _Class;
                 aryTeams[i].Spr = _Spr;
+                pvpLog::log("free");
                 return;
             }
         }
         aryTeams.insertLast(CreateTeam(_Name, _Color, _Class, _Spr));
     }
 
-    CTeam@ CreateTeam(string&in _Name, RGBA&in _Color, int&in _Class, string&in _Spr)
+    void OpenMenu(CBasePlayer@ pPlayer)
+    {
+        TeamMenu.Open(0, 0, pPlayer);
+    }
+
+    CTeam@ CreateTeam(string _Name, RGBA _Color, int _Class, string _Spr)
     {
         CTeam pTeam(_Name, _Color, _Class, _Spr);
         return pTeam;
@@ -221,7 +249,7 @@ namespace pvpTeam
         return null;
     }
 
-    CTeam@ GetTeamByName(string&in szName)
+    CTeam@ GetTeamByName(string szName)
     {
         for(uint i = 0; i < aryTeams.length();i++)
         {
@@ -231,7 +259,7 @@ namespace pvpTeam
         return null;
     }
 
-    CTeam@ GetTeamByIndex(uint&in uiIndex)
+    CTeam@ GetTeamByIndex(uint uiIndex)
     {
         if(uiIndex < aryTeams.length())
                 return aryTeams[uiIndex];
@@ -261,8 +289,11 @@ namespace pvpTeam
 			else
             {
                 CTeam@ pTeam = GetTeamByName(mItem.m_szName);
-                pTeam.Add(pPlayer);
-                pvpLog::say(pPlayer, pvpLang::getLangStr("_MAIN_", "JOINEDTEAM", mItem.m_szName, pPlayer), POSCHAT);
+                if(pTeam !is null)
+                {
+                    pTeam.Add(pPlayer);
+                    pvpLog::say(pPlayer, pvpLang::getLangStr("_MAIN_", "JOINEDTEAM", mItem.m_szName, pPlayer), POSCHAT);
+                }
             }
 		}
 	}

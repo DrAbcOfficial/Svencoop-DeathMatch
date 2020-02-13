@@ -91,7 +91,7 @@ namespace ClassiscWeapon
             return;
         for(uint i = 0; i < aryWeapons.length(); i++)
         {
-            WeaponReplacer(aryWeapons[i][0], aryWeapons[i][1]);
+            pvpUtility::EntityReplacer(aryWeapons[i][0], aryWeapons[i][1]);
         }
     }
 
@@ -186,32 +186,6 @@ namespace ClassiscWeapon
         }
         return false;
     }
-
-    bool BeApply( CBaseEntity@ ent, const string& in strReplacement )
-	{
-		CBaseEntity@ pEntity = g_EntityFuncs.Create( strReplacement, ent.pev.origin, ent.pev.angles ,  false , null );
-		if ( pEntity is null )
-			return false;
-
-		pEntity.pev.targetname = ent.pev.targetname;
-		pEntity.pev.maxs = ent.pev.maxs;
-		pEntity.pev.mins = ent.pev.mins;
-		pEntity.pev.target = ent.pev.target;
-		pEntity.pev.scale = ent.pev.scale;
-		
-		g_EntityFuncs.Remove(ent);
-		return true;
-	}
-	
-	void WeaponReplacer( string str_Replacee , string str_Replacer )
-	{
-		CBaseEntity@ entWeapon = null;
-		while( ( @entWeapon = g_EntityFuncs.FindEntityByClassname( entWeapon, str_Replacee ) ) !is null )
-		{
-			if ( BeApply( entWeapon, str_Replacer ) )
-				continue;
-		}
-	}
 
     void ClassicCall(const CCommand@ pArgs)
 	{

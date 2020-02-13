@@ -3,7 +3,7 @@ namespace pvpUtility
     //注册一个大家都能用的不带参数的FuncDef
     funcdef void VoidFuncCall();
     //获取字符串类型
-    int getStringType(string&in sz)
+    int getStringType(string sz)
     {
         sz.Trim();
         //实数
@@ -41,7 +41,7 @@ namespace pvpUtility
     }
     
     //取对数
-    float getLog(float&in natural, float &in base = 10)
+    float getLog(float natural, float  base = 10)
     {
         return log(natural)/log(base);
     }
@@ -56,7 +56,7 @@ namespace pvpUtility
     //%H 时
     //%M 分
     //%S 秒
-    string getTime(string&in szFormat = "%Y.%m.%d - %H:%M:%S")
+    string getTime(string szFormat = "%Y.%m.%d - %H:%M:%S")
     {
         string szCurrentTime;
         DateTime time;
@@ -78,7 +78,7 @@ namespace pvpUtility
             "key": "val"
         }
     **/
-    string dictionaryToStr(dictionary&in dic)
+    string dictionaryToStr(dictionary dic)
     {
         string tempStr = "{";
         array<string>@ arKeys = dic.getKeys();   
@@ -93,7 +93,7 @@ namespace pvpUtility
     }
 
     //字符串到布尔
-    bool strTobool(string&in str)
+    bool strTobool(string str)
     {
         bool bTemp = false;
         str = tolower(str);
@@ -103,13 +103,13 @@ namespace pvpUtility
     }
 
     //向量到字符串
-    string vecToStr(Vector&in vec)
+    string vecToStr(Vector vec)
     {
         return string(vec.x) + "," + string(vec.y) + "," + string(vec.z);
     }
 
     //字符串数组是否存在元素
-    int isExists(array<string>&in arr, string&in key)
+    int isExists(array<string> arr, string key)
     {
         for(uint i = 0; i < arr.length(); i++)
         {
@@ -120,7 +120,7 @@ namespace pvpUtility
     }
 
     //语言数据数组是否存在元素
-    int isExists(array<pvpLang::CpvpLang@>&in arr, string&in key)
+    int isExists(array<pvpLang::CpvpLang@> arr, string key)
     {
         for(uint i = 0; i < arr.length(); i++)
         {
@@ -131,7 +131,7 @@ namespace pvpUtility
     }
 
     //使用户输入的颜色明显化(将最高一项拉到255)
-    Vector preProcessColor(Vector&in vec)
+    Vector preProcessColor(Vector vec)
     {
         float max = vec.x;
         max = Math.max(max, vec.y);
@@ -142,7 +142,7 @@ namespace pvpUtility
         return Vector(vec.x * max, vec.y * max, vec.z * max);
     }
     //RGBA格式的重载
-    RGBA preProcessColor(RGBA&in rgb)
+    RGBA preProcessColor(RGBA rgb)
     {
         float max = rgb.r;
         max = Math.max(max, rgb.g);
@@ -168,7 +168,7 @@ namespace pvpUtility
 	}
 
     //所有人，打开菜单！
-    void OpenMenuAll(CTextMenu@&in pMenu, int&in page = 0, int&in item = 0)
+    void OpenMenuAll(CTextMenu@ pMenu, int page = 0, int item = 0)
     {
         for (int i = 0; i <= g_Engine.maxClients; i++)
 		{
@@ -181,7 +181,7 @@ namespace pvpUtility
     }
 
     //HL式的发送消息
-    void SendHLHUDText(string&in str)
+    void SendHLHUDText(string str)
     {
         NetworkMessage message(MSG_BROADCAST, NetworkMessages::HudText, null);
             message.WriteString(str);
@@ -196,4 +196,33 @@ namespace pvpUtility
             m.WriteByte(1);
         m.End();
     }
+
+    /**
+        替换实体成别的东西
+    **/
+    bool BeApply( CBaseEntity@ ent, const string& in strReplacement )
+	{
+		CBaseEntity@ pEntity = g_EntityFuncs.Create( strReplacement, ent.pev.origin, ent.pev.angles ,  false , null );
+		if ( pEntity is null )
+			return false;
+
+		pEntity.pev.targetname = ent.pev.targetname;
+		pEntity.pev.maxs = ent.pev.maxs;
+		pEntity.pev.mins = ent.pev.mins;
+		pEntity.pev.target = ent.pev.target;
+		pEntity.pev.scale = ent.pev.scale;
+		
+		g_EntityFuncs.Remove(ent);
+		return true;
+	}
+	
+	void EntityReplacer( string str_Replacee , string str_Replacer )
+	{
+		CBaseEntity@ entEntity = null;
+		while( ( @entEntity = g_EntityFuncs.FindEntityByClassname( entEntity, str_Replacee ) ) !is null )
+		{
+			if ( BeApply( entEntity, str_Replacer ) )
+				continue;
+		}
+	}
 }

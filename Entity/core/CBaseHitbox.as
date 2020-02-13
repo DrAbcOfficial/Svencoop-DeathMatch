@@ -85,14 +85,15 @@ class CBaseHitbox : ScriptBaseMonsterEntity
 
     void Touch(CBaseEntity@ pOther)
     {
-        if(pOther.IsBSPModel())
-            return;
         if(pOther.pev.classname == "trigger_hitbox")
         {
             //自动帮你按L,我好良心啊
             pvpUtility::ClientCommand(m_pPlayer, "stuck");
             return;
         } 
+
+        if(pOther.IsBSPModel())
+            return;
     }
 
     int Classify()
@@ -101,7 +102,7 @@ class CBaseHitbox : ScriptBaseMonsterEntity
     }
 
     //大概是真的死了
-    void doDeath(float&in flTake )
+    void doDeath(float flTake )
     {
         if( flTake >= m_pPlayer.pev.health * 2.5 && flTake > 60 )
             m_pPlayer.SetAnimation( PLAYER_DIE );
@@ -121,7 +122,7 @@ class CBaseHitbox : ScriptBaseMonsterEntity
         g_EntityFuncs.Remove(self);
     }
 
-    int DeliverDamage(float&in Ap, float&in Hp,float&in Take, entvars_t@ pevAttacker, entvars_t@ pevInflictor, int bitsDamageType)
+    int DeliverDamage(float Ap, float Hp,float Take, entvars_t@ pevAttacker, entvars_t@ pevInflictor, int bitsDamageType)
     {
         CBasePlayer@ pAttacker = cast<CBasePlayer@>(g_EntityFuncs.Instance(pevAttacker));
         CBaseEntity@ pInflictor = g_EntityFuncs.Instance(pevInflictor);

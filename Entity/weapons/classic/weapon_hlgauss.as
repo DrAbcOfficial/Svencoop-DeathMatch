@@ -357,19 +357,23 @@ class weapon_hlgauss : ScriptBasePlayerWeaponEntity
 
 		while (flDamage > 10 && nMaxHits > 0)
 		{
+			//减一次反射次数
 			nMaxHits--;
 
+			//做忽略玩家的射线
 			// ALERT( at_console, "." );
 			g_Utility.TraceLine( vecSrc, vecDest, dont_ignore_monsters, pentIgnore, tr );
 
+			//高斯直击
 			if( tr.fAllSolid != 0 )
 				break;
 
 			CBaseEntity@ pEntity = g_EntityFuncs.Instance( tr.pHit );
-
+			//你打到了虚空
 			if( pEntity is null )
 				break;		
 			
+			//初始入射
 			if ( fFirstBeam )
 			{
 				m_pPlayer.pev.effects |= EF_MUZZLEFLASH;
@@ -387,26 +391,38 @@ class weapon_hlgauss : ScriptBasePlayerWeaponEntity
 				g_WeaponFuncs.ApplyMultiDamage( m_pPlayer.pev, m_pPlayer.pev );
 			}
 
+			//可反射高斯
 			if ( pEntity.ReflectGauss() )
 			{
+				//清空无视实体
 				@pentIgnore = null;
 
+				//与击中面法线做点乘，取负数，判断入射角
 				float n = -DotProduct(tr.vecPlaneNormal, vecDir);
 
+				//角度小于60°
 				if (n < 0.5) // 60 degrees
 				{
 					// ALERT( at_console, "reflect %f\n", n );
 					// reflect
 					Vector r;
-				
+
+					//向量和相加乘二取得终点坐标
 					r = 2.0 * tr.vecPlaneNormal * n + vecDir;
+
 					flMaxFrac = flMaxFrac - tr.flFraction;
+
+					//取得新的射线坐标和方向
 					vecDir = r;
 					vecSrc = tr.vecEndPos + vecDir * 8;
 					vecDest = vecSrc + vecDir * 8192;
 
+					//反射点造成一个小爆炸，蹭伤害
 					// explode a bit
 					g_WeaponFuncs.RadiusDamage( tr.vecEndPos, self.pev, m_pPlayer.pev, flDamage * n, (flDamage * n) * 2.5f, CLASS_NONE, DMG_BLAST );
+
+					TEBeam(tr, tr.vecEndPos, 25, true);
+
 					
 					TEGlow( tr, 0.2f, flDamage * n, flDamage * n * 0.5f * 0.1f );
 					TEBall( tr, ( tr.vecEndPos + tr.vecPlaneNormal ), 3, 0.1, 100, 100 );
@@ -414,67 +430,85 @@ class weapon_hlgauss : ScriptBasePlayerWeaponEntity
 					nTotal += 34;
 					
 					// lose energy
-					if (n == 0) n = 0.1;
+					if (n == 0)
+						n = 0.1;
 					flDamage = flDamage * (1 - n);
 				}
 				else
 				{
+					//不可反射高斯
+					//反射光打到人了
 					nTotal += 13;
 
+					//已经挨了一拳了，不要反射了
+					//即穿透直击
 					// limit it to one hole punch
 					if (fHasPunched)
 						break;
 					fHasPunched = true;
 
+					//如果右键没法直击到，那就尝试穿墙（左键没法穿墙的）
 					// try punching through wall if secondary attack (primary is incapable of breaking through)
 					if ( !m_bPrimaryFire )
 					{
+						//以第一次直击的入射点为起点，向玩家的前方8单位做穿透激光起点，以玩家的鼠标所指方向为终点
 						g_Utility.TraceLine( tr.vecEndPos + vecDir * 8, vecDest, dont_ignore_monsters, pentIgnore, beam_tr);
+
+						//反射激光落点是固体
 						if (beam_tr.fAllSolid == 0)
 						{
+							//以第一次穿透的入口点为重点重置穿透激光
 							// trace backwards to find exit point
 							g_Utility.TraceLine( beam_tr.vecEndPos, tr.vecEndPos, dont_ignore_monsters, pentIgnore, beam_tr);
-
+							
+							//求该射线长度为n
 							n = ( beam_tr.vecEndPos - tr.vecEndPos ).Length();
 
+							//如果长度比伤害小
 							if (n < flDamage)
 							{
-								if (n == 0) n = 1;
+								//不能为0的，长度永远为1
+								if (n == 0)
+									n = 1;
+
+								//每折射一次伤害少n
 								flDamage -= n;
 
 								// ALERT( at_console, "punch %f\n", n );
 								nTotal += 21;
+								//射线的后面一点做球
 								TEBall( tr, ( tr.vecEndPos - vecDir ), 3, 0.1f, 100, 100 );
 								// exit blast damage
 								//m_pPlayer->RadiusDamage( beam_tr.vecEndPos + vecDir * 8, pev, m_pPlayer->pev, flDamage, EntityClassifications().GetNoneId(), DMG_BLAST );
 								float damage_radius;
 								
-
+								//折射点造成一个爆炸伤害
+								//多人模式爆炸半径为直击伤害的1.75倍
+								//单人模式为2.5倍
 								if ( ClassiscWeapon::bIsMultiPlay )
-								{
 									damage_radius = flDamage * 1.75;  // Old code == 2.5
-								}
 								else
-								{
 									damage_radius = flDamage * 2.5;
-								}
 
 								g_WeaponFuncs.RadiusDamage( beam_tr.vecEndPos + vecDir * 8, self.pev, m_pPlayer.pev, flDamage, damage_radius, CLASS_NONE, DMG_BLAST );
-								
+
 								TEGlow( tr, 0.2f, 200.0f, 6.0f );
 								TEBall( beam_tr, ( beam_tr.vecEndPos - vecDir ), int( flDamage * 0.02f ), 0.1f, 200, 40 );
 								
 								nTotal += 53;
 
+								//下一次主激光点为折射激光点终点，法线重置为向前
 								vecSrc = beam_tr.vecEndPos + vecDir;
 							}
 						}
 						else
 							 //ALERT( at_console, "blocked %f\n", n );
+							 //被生物阻挡，停止循环
 							flDamage = 0;
 					}
 					else
 					{
+						//大于60°，不穿透，折射一次后停止循环
 						if( m_bPrimaryFire )
 						{
 							TEGlow( tr, 0.2f, 200.0f, 0.3f ); 
@@ -487,6 +521,8 @@ class weapon_hlgauss : ScriptBasePlayerWeaponEntity
 			}
 			else
 			{
+				//不可反射表面
+				//以终点向前尝试一次穿透后停止
 				vecSrc = tr.vecEndPos + vecDir;
 				@pentIgnore = pEntity.edict();
 			}

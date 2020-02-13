@@ -2,6 +2,7 @@
 #include "../addon/ClassicWeapon"
 #include "../addon/Autobhop"
 #include "../addon/TeamDeathMatch"
+#include "../addon/CS"
 
 enum moduleCallType
 {
@@ -17,6 +18,7 @@ void RegistAddonModule()
     pvpAddon::RegisteModule( "Classic Weapons", "HL weapons, wow!" ,"Dr.Abc", @ClassiscWeapon::PluginInit, @ClassiscWeapon::MapInit, @ClassiscWeapon::MapActivate);
     pvpAddon::RegisteModule( "Auto Bhop", "Enable auto bhop" ,"Null", @Autobhop::PluginInit);
     pvpAddon::RegisteModule( "Team Death Match", "Enable Team Death Match" ,"Dr.Abc", @TeamDeathMatch::PluginInit);
+    pvpAddon::RegisteModule( "Counter-Strike", "Counter-Strike" ,"Dr.Abc", @CS::PluginInit, @CS::MapInit, @CS::MapActivate);
 }
 
 namespace pvpAddon

@@ -38,7 +38,7 @@ namespace pvpGameMode
 
     void VoteTeamCall( CPVPVote@ pVote, bool bResult, int iVoters )
     {
-        ChangeMode(tempGamemode);
+        Change(tempGamemode);
     }
 
     string tempGamemode;
@@ -118,7 +118,7 @@ namespace pvpGameMode
     {
         return aryGameModeList[inNowMode];
     }
-    CGameMode@ GetMode(string&in Name)
+    CGameMode@ GetMode(string Name)
     {
         for(uint i = 0; i < aryGameModeList.length(); i++)
         {
@@ -128,7 +128,7 @@ namespace pvpGameMode
         return null;
     }
 
-    void RegistMode(string&in _Name, CGameModeCall@ start, CGameModeCall@ end, int&in Team = MODE_NOT)
+    void RegistMode(string _Name, CGameModeCall@ start, CGameModeCall@ end, int Team = MODE_NOT)
     {
         if(GetMode(_Name) is null)
         {
@@ -148,7 +148,7 @@ namespace pvpGameMode
         aryGameModeList[inNowMode].End();
     }
 
-    void ChangeMode(string&in Name)
+    void Change(string Name)
     {
         aryGameModeList[inNowMode].End();
         for(uint i = 0; i < aryGameModeList.length(); i++)
