@@ -1,9 +1,9 @@
 # Before you downloading
 
 > This plugin is under the development and very unstable
-
+> 
 > CS.as WON'T work properly, your game will crash like nuts if you don't delete it from addon.as
-
+> 
 > Yes, most of addons WILL NOT WORK FINE, please don't ask me why
 
 # Death Match
@@ -50,7 +50,7 @@ core commands are here:
 
 # Known Bugs
 
-1. Players will get stuck if they get to much close.
+1. Players will get stuck if they get close too much.
 2. No headshot, No part of injuries.
 3. Sometime game will crash when changing gamemode.
 4. Projectiles will touch the hitbox and explode wrongly.
