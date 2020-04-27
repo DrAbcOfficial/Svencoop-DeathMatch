@@ -29,6 +29,7 @@ namespace CS
         {"SG550", array<string> = {"weapon_sg550", "4200"}},
         {"G3SG1", array<string> = {"weapon_g3sg1", "5000"}},
         {"AK47", array<string> = {"weapon_ak47", "2500"}},
+        {"Galil", array<string> = {"weapon_galil", "2250"}},
         {"SG552", array<string> = {"weapon_sg552", "3500"}},
         {"Grenade", array<string> = {"weapon_hegrenade", "300"}},
         {"FlashBang", array<string> = {"weapon_hegrenade", "300"}},
@@ -108,8 +109,21 @@ namespace CS
     void PluginInit()
     {
         //注册CS
-        pvpGameMode::RegistMode("CS", @StartTeam, @EndTeam, MODE_TEAM);
+        pvpGameMode::RegistMode("CS", @StartTeam, @EndTeam, MODE_TEAM, dictionary = {{"sv_maxspeed", 230},{"sv_airaccelerate", 1}});
+        pvpClientCmd::RegistCommand("cs_buy","Buy something","CS", @CS::BuyCallBack);
     }
+
+    void BuyCallBack(const CCommand@ Argments)
+	{
+        CBasePlayer@ pPlayer = g_ConCommandSystem.GetCurrentPlayer();
+        if(pvpGameMode::GetMode().uniName != "CS")
+        {
+            pvpLog::say(pPlayer, "Game Mode Not CS");
+            return;
+        }
+        if(pvpUtility::IsPlayerAlive(pPlayer))
+		    g_EntityFuncs.DispatchKeyValue(pPlayer.edict(), "$i_IsCalledCSBuy", 1);
+	}
 
     bool IsCs = false;
     void MapInit()
@@ -173,9 +187,7 @@ namespace CS
             return;
         string steamId = pvpUtility::getSteamId(pPlayer);
         if(!playerBank.exists(steamId))
-        {
             playerBank.set(steamId, DEFAULT_MONEY);
-        }
     }
 
     void PlayerSpawn(CBasePlayer@ pPlayer)
@@ -186,10 +198,27 @@ namespace CS
                 pPlayer.GiveNamedItem( "weapon_usp" , 0 , 0 );
             else
                 pPlayer.GiveNamedItem( "weapon_csglock18" , 0 , 0 );
+            pPlayer.GiveNamedItem( "weapon_csknife" , 0 , 0 );
         }
     }
 
     bool IsRestarting = false;
+
+    void AddTeamMoney(bool IsCt, int Money)
+    {
+        for (int i = 0; i <= g_Engine.maxClients; i++)
+		{
+			CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
+			if(pPlayer !is null && pPlayer.IsConnected())
+            {
+                string steamId = pvpUtility::getSteamId(pPlayer);
+                if(pPlayer.pev.team == (IsCt ? CTClass : TEClass))
+                    AddMoney(steamId, Money + 300);
+                else
+                    AddMoney(steamId, Money);
+            }
+        }
+    }
     bool CheckTeam()
     {
         int ctAlive = 0;
@@ -216,6 +245,13 @@ namespace CS
                         ctAlive++;
                     if(pPlayer.pev.team == TEClass)
                         teAlive++;
+                    
+                    CustomKeyvalue pCustom = pPlayer.GetCustomKeyvalues().GetKeyvalue("$i_IsInBuyZone");
+                    if (pCustom.Exists() && pCustom.GetInteger() == 1)
+                    {
+                        g_EntityFuncs.DispatchKeyValue(pPlayer.edict(), "$i_IsInBuyZone", 0);
+                        g_PlayerFuncs.HudCustomSprite(pPlayer, CS::params);
+                    }
                 }
             }
         }
@@ -227,6 +263,7 @@ namespace CS
                 {
                     IsRestarting = true;
                     g_PlayerFuncs.ClientPrintAll(HUD_PRINTCENTER, (ctAlive == 0 ? TEName : CTName) + " Win!\n" );
+                    AddTeamMoney(ctAlive == 0, 1200);
                     g_Scheduler.SetTimeout( "Respawn", 15);
                 }
             }
@@ -261,8 +298,10 @@ namespace CS
         pvpTeam::AddTeam(TEName, RGBA(255,0,0,255), CLASS(TEClass), pvpConfig::getConfig("Team","RedSpr").getString());
         pvpTeam::AddTeam(CTName, RGBA(0,0,255,255), CLASS(CTClass), pvpConfig::getConfig("Team","BlueSpr").getString());
         pvpTeam::RegistTeamMenu("Chose Your Team");
-        pvpHitbox::addPostDeath(@PlayerDeath);
-        pvpTimer::addTimer(pvpTimer::CTimerFunc("CS-TimerFunc", @CheckTeam));
+        pvpHook::RegisteHook(CHookItem(@CS::PlayerDeath, HOOK_KILLED, "CSDeathHook"));
+        pvpHook::RegisteHook(CHookItem(@CS::PlayerSpawn, HOOK_SPAWN, "CSSPawnHook"));
+        pvpHook::RegisteHook(CHookItem(@CS::PlayerPutinServer, HOOK_PUTINSERVER, "CSPUTINSERVER"));
+        pvpTimer::addTimer(CTimerFunc("CS-TimerFunc", @CheckTeam));
 
         RegistCTMenu();
         RegistTEMenu();
@@ -285,7 +324,7 @@ namespace CS
         params.y = 0;
         params.spritename = BUYZONE_ICON;
         params.color1 = RGBA_GREEN;
-        params.holdTime = 0.5;
+        params.holdTime = 3;
         
         //允许生存模式
         g_SurvivalMode.EnableMapSupport();
@@ -296,17 +335,19 @@ namespace CS
     void EndTeam()
     {
         pvpTeam::RemoveTeam();
-        pvpHitbox::delPostDeath(@PlayerDeath);
+        pvpHook::RemoveHook("CSDeathHook");
+        pvpHook::RemoveHook("CSSPawnHook");
         pvpTimer::delTimer("CS-TimerFunc");
     }
 
-    void PlayerDeath(CBasePlayer@ pPlayer, entvars_t@ pevAttacker)
+    void PlayerDeath(CBasePlayer@ pPlayer, CBaseEntity@ eAttacker)
     {
-        CBasePlayer@ pAttacker = cast<CBasePlayer@>(g_EntityFuncs.Instance(pevAttacker));
-        string steamId = pvpUtility::getSteamId(pAttacker);
-        if(playerBank.exists(steamId))
+        CBasePlayer@ pAttacker = cast<CBasePlayer@>(eAttacker);
+        if(pvpUtility::IsPlayerAlive(pAttacker))
         {
-            AddMoney(pAttacker, 300);
+            string steamId = pvpUtility::getSteamId(pAttacker);
+            if(playerBank.exists(steamId))
+                AddMoney(steamId, 300);
         }
     }
 
@@ -316,11 +357,10 @@ namespace CS
     array<CTextMenu@> aryTEMenus;
     dictionary playerBank;
 
-    void AddMoney(CBasePlayer@ pPlayer, int i)
+    void AddMoney(string steamid, int i)
     {
-        string steamId = pvpUtility::getSteamId(pPlayer);
-        if(playerBank.exists(steamId))
-            playerBank.set(steamId, int(playerBank[steamId]) + i);
+
+            playerBank.set(steamid, int(playerBank[steamid]) + i);
     }
 
     CTextMenu@ GetMenu(string&in name, int ct)
@@ -357,7 +397,7 @@ namespace CS
             array<string> tempItems = array<string>(CTWeaponMenu[keys[i]]);
             for(uint j = 0; j < tempItems.length(); j++)
             {
-                tempMenu.AddItem(tempItems[j], null);
+                tempMenu.AddItem(tempItems[j] + " $" + array<string>(WeaponList[tempItems[j]])[1], null);
             }
             tempMenu.AddItem("<Cancel>", null);
             tempMenu.Register();
@@ -380,7 +420,7 @@ namespace CS
             array<string> tempItems = array<string>(TEWeaponMenu[keys[i]]);
             for(uint j = 0; j < tempItems.length(); j++)
             {
-                tempMenu.AddItem(tempItems[j], null);
+                tempMenu.AddItem(tempItems[j] + " $" + array<string>(WeaponList[tempItems[j]])[1], null);
             }
             tempMenu.AddItem("<Cancel>", null);
             tempMenu.Register();
@@ -413,14 +453,16 @@ namespace CS
                 return;
 			else
             {
-                array<string> szTemp = array<string>(WeaponList[mItem.m_szName]);
+                array<string> szTemp = array<string>(WeaponList[mItem.m_szName.Split(" ")[0]]);
                 string steamId = pvpUtility::getSteamId(pPlayer);
                 int money = int(playerBank[steamId]);
                 if(money - atoi(szTemp[1]) > 0)
                 {
                     pPlayer.GiveNamedItem( szTemp[0] , 0 , 0 );
-                    AddMoney(pPlayer, -atoi(szTemp[1]));
+                    AddMoney(steamId, -atoi(szTemp[1]));
                 }
+                else
+                    pvpLog::say(pPlayer, {"You don't have enough money to buy it.", mItem.m_szName.Split(" ")[0] + " | $" + szTemp[1]}, POSCHAT);
             }
 		}
 	}
@@ -468,13 +510,15 @@ class func_buyzone : ScriptBaseEntity
             return;
 
         CBasePlayer@ pPlayer = cast<CBasePlayer@>(pOther);
-        g_PlayerFuncs.HudCustomSprite(pPlayer, CS::params);
-        if (pPlayer.pev.flags & FL_DUCKING != 0)
+        g_EntityFuncs.DispatchKeyValue(pPlayer.edict(), "$i_IsInBuyZone", 1);
+        CustomKeyvalue pCustom = pPlayer.GetCustomKeyvalues().GetKeyvalue("$i_IsCalledCSBuy");
+        if (pCustom.Exists() && pCustom.GetInteger() == 1)
         {
+            g_EntityFuncs.DispatchKeyValue(pPlayer.edict(), "$i_IsCalledCSBuy", 0);
             if(pPlayer.pev.team == pev.team && pev.team != 0)
-                CS::CTMenu.Open(1,0,pPlayer);
+                CS::CTMenu.Open(5,0,pPlayer);
             else
-                CS::TEMenu.Open(1,0,pPlayer);
+                CS::TEMenu.Open(5,0,pPlayer);
         }
     }
 }

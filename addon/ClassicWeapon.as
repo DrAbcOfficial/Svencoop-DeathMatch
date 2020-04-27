@@ -59,6 +59,9 @@ namespace ClassiscWeapon
         pvpClientCmd::RegistCommand("admin_multimode","Toggle the Multiplay mode","ClassicWeapons", @ClassiscWeapon::MultiCall, CCMD_ADMIN);
 
         pvpClientCmd::RegistCommand("player_weaponcolor","Change Your Weapons's color!","ClassicWeapons", @ClassiscWeapon::ColorCall);
+
+        pvpHook::RegisteHook(CHookItem(@ClassiscWeapon::PlayerSpawn, HOOK_SPAWN, "CLASSICSPAWN"));
+        pvpHook::RegisteHook(CHookItem(@ClassiscWeapon::PlayerPutinServer, HOOK_PUTINSERVER, "CLASSICPUTINSERVER"));
     }
 
     void MapInit()
@@ -160,31 +163,25 @@ namespace ClassiscWeapon
         return pvpConfig::getConfig("Classic","DotColor").getVector();
     }
 
-    bool PlayerPutinServer(CBasePlayer@pPlayer)
+    void PlayerPutinServer(CBasePlayer@pPlayer)
     {
         if(!bIsEnable)
-            return false;
+            return;
         if(pPlayer !is null)
-        {
             aryColors.insertLast(PlayerColor(pPlayer));
-            return true;
-        }
-        return false;
     }
 
-    bool PlayerSpwan(CBasePlayer@pPlayer)
+    void PlayerSpawn(CBasePlayer@pPlayer)
     {
         if(!bIsEnable)
-            return false;
+            return;
         if(pPlayer !is null)
         {
             pPlayer.RemoveAllItems(false);
 		    pPlayer.SetItemPickupTimes(0);
 		    pPlayer.GiveNamedItem( "weapon_hl9mmhandgun" , 0 , 34 );
 		    pPlayer.GiveNamedItem( "weapon_hlcrowbar" , 0 , 0 );
-            return true;
         }
-        return false;
     }
 
     void ClassicCall(const CCommand@ pArgs)

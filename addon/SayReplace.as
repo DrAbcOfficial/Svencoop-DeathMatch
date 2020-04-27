@@ -7,7 +7,7 @@ namespace Sayreplace
     {
         bSayParament = pvpConfig::getConfig("Sayreplace","Enable").getBool();
 
-        pvpClientSay::RegisteSayFunc("Sayreplace", @Sayreplace::paramentSayHook);
+        pvpHook::RegisteHook(CHookItem(@Sayreplace::paramentSayHook, HOOK_PRESAY, "Sayreplace"));
 
         pvpClientCmd::RegistCommand("admin_sayreplace","Toggle the say replace","Say", @Sayreplace::sayRepCallback, CCMD_ADMIN);
     }
@@ -62,7 +62,7 @@ namespace Sayreplace
         repStr = pvpConfig::getConfig("Sayreplace","Ap").getString();
         if(tempStr.Find(repStr) != String::INVALID_INDEX )
             tempStr = tempStr.Replace(repStr, int(pPlayer.pev.armorvalue));
-        pvpClientSay::sayDelg(pPlayer, tempStr, SayType);
+        pvpLog::SayDelg(pPlayer, tempStr, SayType);
         return false;
     }
 }

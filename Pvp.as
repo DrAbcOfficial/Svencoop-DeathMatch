@@ -1,21 +1,23 @@
-#include "core/Timer"
+
 #include "core/Log"
 #include "core/Lang"
-#include "core/File"
 #include "core/Utility"
-#include "core/Config"
-#include "core/Hitbox"
-#include "core/Hook"
-#include "core/Hud"
 #include "core/PlayerData"
-#include "core/Team"
-#include "core/Vote"
-#include "core/ClientCmd"
-#include "core/ClientSay"
-#include "core/EndGame"
-#include "core/GameMode"
-#include "core/TimerStop"
 #include "core/Addon"
+#include "core/VersionInfo"
+#include "core/Class/CHandlePackage"
+#include "core/IO/File"
+#include "core/IO/Config"
+#include "core/Hook/Hook"
+#include "core/Game/Timer"
+#include "core/Game/Hitbox"
+#include "core/Game/Hud"
+#include "core/Game/Team"
+#include "core/Game/Vote"
+#include "core/Game/ClientCmd"
+#include "core/Game/EndGame"
+#include "core/Game/GameMode"
+#include "core/Game/TimerStop"
 
 bool LoadFlag = false;
 void PluginInit()
@@ -26,6 +28,10 @@ void PluginInit()
 
     //非常重
     LoadFlag = pvpConfig::PluginInit();
+
+    //pvpLog::log(pvpConfig::getConfig("General","PluginVersion").getValType());
+
+    pvpVersion::PluginInit();
     //配置文件不对，小伙子
     if(!LoadFlag)
     {
@@ -56,6 +62,7 @@ void PluginInit()
       _|  |_    \ \/ / _| |_     
       |_____|    \__/ |_____|         Plugin
     """);
+    pvpLog::log(pvpLang::getLangStr("_MAIN_","VERSION", pvpVersion::Version.Version));
     pvpLog::log(pvpLang::getLangStr("_MAIN_","INITSUCC"));
 }
 

@@ -35,6 +35,8 @@ namespace pvpUtility
         //颜色型
         else if(Regex::Match(temp, @cRegex))
             return PDATA_RGBA;
+        else if(temp.StartsWith("<ARRAY>"))
+            return PDATA_ARRAY;
         //字符串
         else
             return PDATA_STRING;
@@ -120,7 +122,7 @@ namespace pvpUtility
     }
 
     //语言数据数组是否存在元素
-    int isExists(array<pvpLang::CpvpLang@> arr, string key)
+    int isExists(array<CPVPLang@> arr, string key)
     {
         for(uint i = 0; i < arr.length(); i++)
         {
@@ -224,5 +226,12 @@ namespace pvpUtility
 			if ( BeApply( entEntity, str_Replacer ) )
 				continue;
 		}
+	}
+
+    bool IsPlayerAlive(CBasePlayer@ pPlayer)
+	{
+		if(pPlayer !is null)
+			return pPlayer.IsAlive() && pPlayer.IsConnected() && pPlayer.IsNetClient() && pPlayer.IsPlayer() && !pPlayer.GetObserver().IsObserver();
+		return false;
 	}
 }

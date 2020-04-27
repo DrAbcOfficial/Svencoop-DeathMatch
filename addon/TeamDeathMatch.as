@@ -38,8 +38,8 @@ namespace TeamDeathMatch
         pvpUtility::SendHLHUDText("Team Death Match");
         pvpUtility::SendHLTitle();
         pvpUtility::OpenMenuAll(pvpTeam::TeamMenu);
-        pvpEndGame::addEnd(pvpEndGame::CEndFunc("TeamEnd", @End));
-        pvpHitbox::addPostDeath(@PlayerDeath);
+        pvpEndGame::addEnd(CEndFunc("TeamEnd", @End));
+        pvpHook::RegisteHook(CHookItem(@TeamDeathMatch::PlayerDeath, HOOK_KILLED, "TDMDeath"));
     }
 
     void EndTeam()
@@ -49,7 +49,7 @@ namespace TeamDeathMatch
         bTDMState = false;
         pvpUtility::SendHLHUDText("Team Death Match Disabled");
         pvpEndGame::delEnd("TeamEnd");
-        pvpHitbox::delPostDeath(@PlayerDeath);
+        pvpHook::RemoveHook("TDMDeath");
     }
 
     void End()

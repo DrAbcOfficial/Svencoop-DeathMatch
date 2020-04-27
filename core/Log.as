@@ -11,7 +11,8 @@ enum LogPosition
     POSCONSOLE,
     POSCHAT,
     POSCENTER,
-    POSNOTIFY
+    POSNOTIFY,
+    POSBOTH
 }
 
 namespace pvpLog
@@ -152,10 +153,43 @@ namespace pvpLog
             case POSCENTER: g_PlayerFuncs.ClientPrint( pPlayer, HUD_PRINTCENTER, szBuffer );break;
             //在左上角推送
             case POSNOTIFY:  g_PlayerFuncs.ClientPrint( pPlayer, HUD_PRINTNOTIFY, szBuffer );break;
+            //在左上角推送
+            case POSBOTH:  g_PlayerFuncs.ClientPrint( pPlayer, HUD_PRINTCONSOLE, szBuffer );g_PlayerFuncs.ClientPrint( pPlayer, HUD_PRINTTALK, szBuffer );break;
         }
         //获取昵称
         string pName = string(pPlayer.pev.netname);
         //记录下
         g_Log.PrintF( pvpUtility::getTime() + "-" + pName + "@:" + szBuffer );
+    }
+
+    //替换原来的全员发送消息
+    void SayDelg(CBasePlayer@&in pPlayer, string szSth, ClientSayType SayType)
+    {
+        if(szSth.IsEmpty())
+            return;
+        if( SayType == CLIENTSAY_SAY )
+		{
+			if ( pPlayer.IsAlive() == true )
+				szSth = string( pPlayer.pev.netname ) + ": " + szSth + "\n";
+			else
+				szSth = "*DEAD* " + pPlayer.pev.netname + ": " + szSth + "\n";
+            g_PlayerFuncs.SayTextAll( pPlayer, szSth );
+            g_Log.PrintF( "Msg. " + pvpUtility::getTime() + " - " + szSth);
+		}
+		else
+		{
+            //先判断再发送消息，一来减少占用，而来避免bug
+            if ( pPlayer.IsAlive() == true )
+				szSth = "(TEAM) " + string(pPlayer.pev.netname) + ": " + szSth + "\n";
+			else
+				szSth = "(TEAM) *DEAD* " + string(pPlayer.pev.netname) + ": " + szSth + "\n";
+			for ( int i = 1; i <= g_Engine.maxClients; ++i )
+			{
+				CBasePlayer@ tPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
+				if ( tPlayer !is null && tPlayer.IsConnected() && tPlayer.GetClassification( 0 ) == pPlayer.GetClassification( 0 ) )
+                    g_PlayerFuncs.SayText( tPlayer, szSth );
+			}
+		}
+        g_Log.PrintF( "Msg. " + (SayType == CLIENTSAY_SAY ? "" : "in team" + pPlayer.GetClassification(0)) + "." + pvpUtility::getTime() + " - " + szSth);
     }
 }

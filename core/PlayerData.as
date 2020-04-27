@@ -1,32 +1,17 @@
+#include "Class/CPlayerData"
+
 namespace pvpPlayerData
 {
     void PluginInit()
     {
         pvpLang::addLang("_PLAYERDATA_","PlayerData");
+        pvpHook::RegisteHook(CHookItem(@pvpPlayerData::PlayerPutinServer, HOOK_PUTINSERVER, "PLAYERDATAPUTINSERVER"));
     }
 
-    bool PlayerPutinServer(CBasePlayer@pPlayer)
+    void PlayerPutinServer(CBasePlayer@pPlayer)
     {
         if(pPlayer !is null)
-        {
             pvpPlayerData::add(pPlayer);
-            return true;
-        }
-        return false;
-    }
-
-    class CPlayerData
-    {
-        CPlayerData(CBasePlayer@ _pPlayer)
-        {
-            @pPlayer = @_pPlayer;
-            steamId = pvpUtility::getSteamId(_pPlayer);
-            Data = {};
-        }
-
-        CBasePlayer@ pPlayer;
-        string steamId;
-        dictionary Data;
     }
 
     array<CPlayerData@> arrpData = {};

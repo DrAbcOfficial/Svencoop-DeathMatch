@@ -1,3 +1,5 @@
+#include "Class/CPVPLang"
+
 namespace pvpLang
 {
     void PluginInit()
@@ -13,6 +15,8 @@ namespace pvpLang
         pvpClientCmd::RegistCommand("player_language","Change or get your language here","Language",@pvpLang::ChangeLangCallback);
         //查看系统语言和可选语言
         pvpClientCmd::RegistCommand("info_syslang","Tell me the system language","Language",@pvpLang::SysLangCallback);
+
+        pvpHook::RegisteHook(CHookItem(@pvpLang::PlayerPutinServer, HOOK_PUTINSERVER, "LANGPUTINSERVER"));
     }
 
     void SysLangCallback(const CCommand@ pArgs)
@@ -49,57 +53,14 @@ namespace pvpLang
         pvpLog::say(pPlayer, pvpLang::getLangStr("_MAIN_", "LANGERR", tempStr, pIndex));
 	}
 
-    bool PlayerPutinServer(CBasePlayer@pPlayer)
+    void PlayerPutinServer(CBasePlayer@pPlayer)
     {
         if(pPlayer !is null)
-        {
             pvpPlayerData::addData(pPlayer,"Lang", sysIndex);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-        这个结构
-        {
-            {
-                Name名称
-                Path路径
-                Data
-                {
-                    EN
-                    {
-                        balabl
-                    }
-                    CN
-                    {
-                        Balabala
-                    }
-                }
-            }
-        }
-    **/
-    class CpvpLang
-    {
-        string Name;
-        string Path;
-        dictionary Data;
-        CpvpLang(string _Name, string _Path)
-        {
-            Name = _Name;
-            Path = _Path;
-            //构造函数问题只能固定位置
-            Data = pvpFile::getINIData( "scripts/plugins/pvp/lang/" + Path + ".ini" );
-        }
-
-        string toString()
-        {
-            return Name + "::" + Path;
-        }
     }
 
     //所有语言数据储存在这里
-    array<CpvpLang@> ayLangs = {};
+    array<CPVPLang@> ayLangs = {};
     //从序号获取语言字符串
     array<string> langIndex = {};
     //系统语言
@@ -109,7 +70,7 @@ namespace pvpLang
     void addLang(string&in name, string&in path)
     {
         //添加新语言
-        pvpLang::CpvpLang buffer(name,path);
+        pvpLang::CPVPLang buffer(name,path);
         //判断是否存在
         int iBuffer = pvpUtility::isExists(ayLangs, name);
         if(iBuffer != -1)
