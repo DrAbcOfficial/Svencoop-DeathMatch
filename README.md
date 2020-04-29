@@ -61,7 +61,7 @@ core commands are here:
 # ToDo
 
 1. Fix known bug.
-2. Rewrite the hook method
+2. ~~Rewrite the hook method~~
 3. Save the player data to a file or files
 4. Save the config
 5. Improved plugin performance
