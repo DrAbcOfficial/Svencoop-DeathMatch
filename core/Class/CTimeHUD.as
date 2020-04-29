@@ -6,6 +6,8 @@ class CTimeHUD : CNumHUD
 {
     void Send()
     {
+        if(Hide)
+            return;
         for (int i = 0; i <= g_Engine.maxClients; i++)
         {
             CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
@@ -16,6 +18,8 @@ class CTimeHUD : CNumHUD
 
     void Send(CBasePlayer@ pPlayer)
     {
+        if(Hide)
+            return;
         g_PlayerFuncs.HudTimeDisplay(pPlayer, this.HUD);
     }
 

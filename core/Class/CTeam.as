@@ -28,6 +28,11 @@ class CTeam
         get {return List.length();}
     }
 
+    CBasePlayer@ GetRandomPlayer
+    {
+        get { return List.length() == 0 ? null : List[Math.RandomLong(0, List.length() - 1)];}
+    }
+
     int Classify()
     {
         return Class;

@@ -82,4 +82,5 @@ void MapActivate()
     if(!LoadFlag)
         return;
     pvpAddon::MapActivate();
+    g_EngineFuncs.ServerCommand("as_reloadplugin pvp\n");
 }

@@ -10,8 +10,8 @@ namespace pvpHud
         RGBA&in _Color2 = RGBA(0,0,0,255), Vector2D _FadeTime = Vector2D(0,0), int&in _Effect = 0, float&in _EffectTime = 0.0f)
     {
         CTextHUD pHud (_Name, _Content,_Color1, _Pos, _Channel,_HoldTime, _Color2, _FadeTime, _Effect, _EffectTime);
-        aryTextHUD.insertLast(pHud);
-        return pHud;
+        aryTextHUD.insertLast(@pHud);
+        return @pHud;
     }
 
     CTextHUD@ GetTextHUD(string&in Name)
@@ -38,8 +38,8 @@ namespace pvpHud
     {
         CNumHUD pHud;
         pHud.Create(_Name, _Value, _Color1, _Pos, _Channel, _HoldTime, _Flag, _SpriteName, _Color2, _FadeTime, _Effect, _EffectTime);
-        aryNumHUD.insertLast(pHud);
-        return pHud;
+        aryNumHUD.insertLast(@pHud);
+        return @pHud;
     }
 
     CNumHUD@ GetNumHUD(string&in Name)
@@ -64,8 +64,8 @@ namespace pvpHud
     {
         CTimeHUD pHud;
         pHud.Create(_Name, _Value, _Color1, _Pos, _Channel, _HoldTime, _Flag, _SpriteName, _Color2, _FadeTime, _Effect, _EffectTime);
-        aryNumHUD.insertLast(cast<CNumHUD@>(pHud));
-        return pHud;
+        aryNumHUD.insertLast(cast<CNumHUD@>(@pHud));
+        return @pHud;
     }
 
     CTimeHUD@ GetTimeHUD(string&in Name)

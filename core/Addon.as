@@ -2,7 +2,7 @@
 #include "../addon/ClassicWeapon"
 #include "../addon/Autobhop"
 #include "../addon/TeamDeathMatch"
-#include "../addon/CS"
+#include "../addon/CS/CS"
 
 enum moduleCallType
 {

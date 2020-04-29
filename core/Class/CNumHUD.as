@@ -19,6 +19,7 @@ class CNumHUD
     protected float HoldTime;
     protected float EffectTime;
     protected string SpriteName;
+    bool Hide = false;
 
 
     void Create(string&in _Name, float&in _Value, RGBA&in _Color1, Vector2D&in _Pos, int&in _Channel, float&in _HoldTime, 
@@ -92,11 +93,15 @@ class CNumHUD
 
     void Send(CBasePlayer@ pPlayer)
     {
+        if(Hide)
+            return;
         g_PlayerFuncs.HudNumDisplay(pPlayer, this.HUD);
     }
 
     void Send()
     {
+        if(Hide)
+            return;
         for (int i = 0; i <= g_Engine.maxClients; i++)
         {
             CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);

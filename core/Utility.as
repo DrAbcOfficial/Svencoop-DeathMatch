@@ -228,6 +228,14 @@ namespace pvpUtility
 		}
 	}
 
+    bool IsPlayerAlive(CBaseEntity@ pEntity)
+	{
+        CBasePlayer@ pPlayer = cast<CBasePlayer@>(pEntity);
+		if(pPlayer !is null)
+			return pPlayer.IsAlive() && pPlayer.IsConnected() && pPlayer.IsNetClient() && pPlayer.IsPlayer() && !pPlayer.GetObserver().IsObserver();
+		return false;
+	}
+
     bool IsPlayerAlive(CBasePlayer@ pPlayer)
 	{
 		if(pPlayer !is null)

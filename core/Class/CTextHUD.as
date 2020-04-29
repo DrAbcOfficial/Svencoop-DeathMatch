@@ -14,6 +14,7 @@ class CTextHUD
     private int Channel;
     private float HoldTime;
     private float EffectTime;
+    bool Hide = false;
 
     CTextHUD(string&in _Name, string&in _Content, RGBA&in _Color1, Vector2D&in _Pos, int&in _Channel, float&in _HoldTime, 
     RGBA&in _Color2 = RGBA(0,0,0,255), Vector2D _FadeTime = Vector2D(0,0), int&in _Effect = 0, float&in _EffectTime = 0.0f)
@@ -75,11 +76,15 @@ class CTextHUD
 
     void Send(CBasePlayer@ pPlayer)
     {
+        if(Hide)
+            return;
         g_PlayerFuncs.HudMessage(pPlayer, HUD, Content);
     }
 
     void Send()
     {
+        if(Hide)
+            return;
         g_PlayerFuncs.HudMessageAll( HUD, Content);
     }
 }
